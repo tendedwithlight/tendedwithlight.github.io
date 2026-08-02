@@ -616,6 +616,83 @@
   .voice-pick { flex:1; min-width:180px; padding:11px 12px; border-radius:12px; border:1px solid var(--line);
     background:var(--paper); color:var(--ink); font-family:inherit; font-size:15px; cursor:pointer; }
   .voice-pick:focus { outline:2px solid var(--accent); outline-offset:1px; }
+
+  /* ---------- Bookshelf ---------- */
+  .book-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:16px; margin-top:6px; }
+  .book-card { cursor:pointer; text-align:left; background:transparent; border:0; padding:0; font-family:inherit; color:inherit; display:flex; flex-direction:column; }
+  .book-card:active { transform:scale(0.98); }
+  .book-cover { width:100%; aspect-ratio:2/3; border-radius:12px; overflow:hidden; box-shadow:var(--shadow-soft);
+    background:linear-gradient(150deg,#efe3d5,#e6d5c6); display:flex; align-items:center; justify-content:center; position:relative; }
+  .book-cover img { width:100%; height:100%; object-fit:cover; display:block; }
+  .book-cover.placeholder { padding:14px; }
+  .book-cover .ph-title { font-family:"Caveat", cursive; font-size:19px; line-height:1.15; text-align:center; color:#6E5B49; }
+  .book-cover .ph-mark { position:absolute; bottom:8px; right:9px; opacity:.5; }
+  .book-meta { padding:8px 2px 0; }
+  .book-meta .bt { font-weight:600; font-size:14px; line-height:1.25; }
+  .book-meta .ba { color:var(--ink-soft); font-size:12.5px; margin-top:1px; }
+  .book-meta .stars { margin-top:3px; font-size:13px; letter-spacing:1px; color:var(--gold); }
+  .book-meta .bread { margin-top:2px; font-size:11.5px; color:var(--ink-soft); }
+  .reading-card { text-align:center; }
+  .read-eyebrow { font-size:12px; letter-spacing:2.5px; text-transform:uppercase; color:var(--accent); font-weight:700; margin-bottom:6px; }
+  .read-hero { display:inline-flex; align-items:center; gap:12px; margin:2px 0 4px; }
+  .read-hero .rn { font-family:"Playfair Display", Georgia, serif; font-size:60px; line-height:1; color:var(--accent); font-weight:600; }
+  .read-hero .rl { text-align:left; font-size:14px; color:var(--ink-soft); line-height:1.25; }
+  .read-sub { font-family:"Caveat", cursive; font-size:19px; color:var(--ink-soft); margin-bottom:10px; }
+  .stat-list { margin-top:8px; text-align:left; max-width:340px; margin-left:auto; margin-right:auto; }
+  .stat-row { display:flex; align-items:baseline; gap:8px; padding:10px 4px; border-top:1px solid var(--line); font-size:15px; }
+  .stat-row:first-child { border-top:0; }
+  .stat-row .sy { font-weight:700; width:48px; flex:0 0 auto; }
+  .stat-row .sc { color:var(--ink-soft); flex:0 0 auto; }
+  .stat-row .dots { flex:1; border-bottom:1.5px dotted var(--line); transform:translateY(-3px); min-width:14px; }
+  .stat-row .sr { color:var(--gold); font-weight:600; flex:0 0 auto; }
+  .book-readline { text-align:center; font-family:"Caveat", cursive; font-size:20px; color:var(--ink-soft); margin:-6px 0 14px; }
+  .wtr-add { display:flex; gap:8px; margin-top:6px; align-items:flex-start; }
+  .wtr-field { position:relative; flex:1; min-width:0; }
+  .wtr-field input { width:100%; }
+  .wtr-add .btn { flex:0 0 auto; }
+  .wtr-results { position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:60;
+    background:var(--paper); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); overflow:hidden; max-height:320px; overflow-y:auto; }
+  .wtr-res { display:flex; align-items:center; gap:10px; width:100%; text-align:left; background:transparent; border:0;
+    border-top:1px solid var(--line); padding:9px 11px; cursor:pointer; font-family:inherit; color:var(--ink); }
+  .wtr-res:first-child { border-top:0; }
+  .wtr-res:hover, .wtr-res:active { background:var(--cream-2); }
+  .wtr-res-cov { flex:0 0 auto; width:30px; height:44px; border-radius:4px; overflow:hidden; background:var(--cream-2);
+    display:flex; align-items:center; justify-content:center; }
+  .wtr-res-cov img { width:100%; height:100%; object-fit:cover; }
+  .wtr-res-txt { display:flex; flex-direction:column; min-width:0; }
+  .wtr-res-t { font-size:14px; font-weight:600; line-height:1.25; }
+  .wtr-res-a { font-size:12.5px; color:var(--ink-soft); }
+  .wtr-res-msg { padding:11px; font-size:13.5px; color:var(--ink-soft); font-style:italic; }
+  .wtr-list { list-style:none; margin:12px 0 0; padding:0; }
+  .wtr-item { display:flex; align-items:center; gap:10px; padding:11px 2px; border-top:1px solid var(--line); }
+  .wtr-item:first-child { border-top:0; }
+  .wtr-item-cov { flex:0 0 auto; width:26px; height:38px; border-radius:4px; overflow:hidden; background:var(--cream-2);
+    display:flex; align-items:center; justify-content:center; }
+  .wtr-item-cov img { width:100%; height:100%; object-fit:cover; }
+  .wtr-item .wtr-t { flex:1; min-width:0; display:flex; flex-direction:column; }
+  .wtr-item .wtr-t-title { font-size:15px; line-height:1.25; }
+  .wtr-item .wtr-t-author { font-size:12.5px; color:var(--ink-soft); }
+  .wtr-item .wtr-start { flex:0 0 auto; white-space:nowrap; }
+  .wtr-item .wtr-x { flex:0 0 auto; border:0; background:transparent; cursor:pointer; color:var(--ink-soft); font-size:15px; padding:4px 6px; }
+  .add-book-card .book-cover { border:2px dashed var(--line); background:var(--cream-2); color:var(--ink-soft); flex-direction:column; gap:6px; }
+  .add-book-card .book-cover .plus { font-size:34px; line-height:1; color:var(--accent); }
+  .add-book-card .book-cover .al { font-size:13px; }
+
+  /* review editor */
+  .cover-edit { display:flex; gap:16px; align-items:flex-start; }
+  .cover-edit .book-cover { width:118px; flex:0 0 118px; }
+  .cover-actions { display:flex; flex-direction:column; gap:8px; flex:1; min-width:0; }
+  .stars-pick { display:flex; gap:4px; }
+  .stars-pick button { background:transparent; border:0; cursor:pointer; font-size:30px; line-height:1; padding:2px; color:#d9cbbd; font-family:inherit; }
+  .stars-pick button.on { color:var(--gold); }
+  .stars-pick button:active { transform:scale(1.2); }
+  .spoiler-zone { margin-top:16px; border:1px solid var(--line); border-radius:14px; overflow:hidden; }
+  .spoiler-head { display:flex; align-items:center; gap:8px; width:100%; text-align:left; background:var(--cream-2);
+    border:0; padding:12px 14px; cursor:pointer; font-family:inherit; font-size:14.5px; font-weight:600; color:var(--ink); }
+  .spoiler-head .lock { margin-left:auto; font-size:13px; color:var(--ink-soft); font-weight:500; }
+  .spoiler-body { padding:12px 14px; }
+  .spoiler-body.hidden { display:none; }
+  .book-saverow { display:flex; align-items:center; gap:12px; margin-top:16px; flex-wrap:wrap; }
 </style>
 </head>
 <body>
@@ -975,7 +1052,9 @@ let DATA = loadData();
    ------------------------------------------------------------------------ */
 const DRAFT_SKIP = { ventNew:1, ventTry:1, cloudEmail:1, ltDate:1, comfort:1,
                      letGoText:1, todayNote:1, missionWhy:1, familyNote:1,
-                     importFile:1, search:1 };
+                     importFile:1, search:1,
+                     bkTitle:1, bkAuthor:1, bkGist:1, bkReview:1, bkSpoil:1, bkQuote:1, bkRec:1,
+                     wtrInput:1 };
 function clearDraft(id){
   if(DATA.drafts && DATA.drafts[id]!==undefined){ delete DATA.drafts[id]; saveData(DATA); }
 }
@@ -1131,6 +1210,9 @@ DATA.bgArt     = DATA.bgArt     || "";   // a painting she sets as the app backd
 if (DATA.voiceOn === undefined) DATA.voiceOn = true;    // read-aloud voice ON by default — the app guides her by voice, eyes closed
 DATA.voiceName = DATA.voiceName || "";   // her chosen narrator voice (voiceURI)
 DATA.drafts    = DATA.drafts    || {};   // in-progress, unsaved text per field id — so nothing typed is ever lost
+DATA.books     = DATA.books     || [];   // her book reviews: [{id,date,finished,title,author,rating,cover,coverType,gist,review,spoilers,quote,recommend}]
+DATA.books.forEach(b=>{ if(!b.finished) b.finished = b.date || todayKey(); }); // date-read for older entries
+DATA.readingList = DATA.readingList || []; // books she wants to read someday: [{id,title,added}]
 if (!DATA._migrated1) {                    // fold old journal entries into the one journal
   (DATA.journal||[]).forEach(j=>{ DATA.pages.push({ id:(j.id||(Math.random().toString(36).slice(2,9))), date:j.date, kind:"page", text:(j.prompt?("On: "+j.prompt+"\n\n"):"")+(j.text||""), img:"" }); });
   DATA._migrated1 = true; saveData(DATA);
@@ -1200,6 +1282,8 @@ const NAV = [
 
 let current = "today";
 let _ywMonth = null; // Year Woven: selected month "YYYY-MM" (null = current)
+let _bookOpen = null; // Bookshelf: id of the book being viewed/edited (null = shelf)
+let _wtrResults = []; // Want-to-Read: latest live search results
 
 const TABS = [
   { key:"today",   label:"Today",   icon:"sun" },
@@ -1207,6 +1291,7 @@ const TABS = [
   { key:"reflect", label:"Reflect", icon:"feather" },
   { key:"family",  label:"Family",  icon:"home" },
   { key:"mission", label:"4ABT",    icon:"sunrise" },
+  { key:"books",   label:"Books",   icon:"book" },
   { key:"gallery", label:"Gallery", icon:"frame" },
   { key:"vent",    label:"Vent",    icon:"flame" }
 ];
@@ -1214,7 +1299,8 @@ const ACCENTS = {
   today:"#C9A15A", hard:"#D98E73", care:"#7E9B7A", reflect:"#C9A15A", more:"#8E7C93",
   recovery:"#8E7C93", emotional:"#C98A94", spiritual:"#C9A15A", physical:"#7E9B7A", intellectual:"#C97B63",
   gym:"#A87E96", exercises:"#7E9B7A", journal:"#C9A15A", week:"#C9A15A", priorities:"#8E7C93", rhythms:"#C98A94",
-  yearwoven:"#B98BA4", family:"#D69B7A", mission:"#D9A24E", gallery:"#B98BA4", backup:"#9A8FA2"
+  yearwoven:"#B98BA4", family:"#D69B7A", mission:"#D9A24E", gallery:"#B98BA4", backup:"#9A8FA2",
+  books:"#C97B63"
 };
 const PARENT = {
   recovery:"care", emotional:"care", spiritual:"care", physical:"care", intellectual:"care", gym:"care", exercises:"care",
@@ -1826,10 +1912,19 @@ function doPrintJournal(){
     +'.d{color:#b08d57;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px}'
     +'img{max-width:100%;border-radius:8px;margin:6px 0}p{white-space:pre-wrap;margin:0}</style></head>'
     +'<body><h1>'+esc(title)+'</h1><div class="sub">made with love ✦</div>'+body
-    +'<scr'+'ipt>window.onload=function(){setTimeout(function(){window.print();},350);}</scr'+'ipt></body></html>';
-  const w=window.open("","_blank");
-  if(!w){ alert("Please allow pop-ups so your journal can open to print or save as PDF."); return; }
-  w.document.write(html); w.document.close();
+    +'</body></html>';
+  // Download as a file — never opens a trapping new window (safe inside the iPhone home-screen app).
+  try{
+    const blob=new Blob([html],{type:'text/html'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url; a.download=(CONFIG.ownerName||"My")+"-Journal.html";
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ try{ URL.revokeObjectURL(url); a.remove(); }catch(_){}} ,4000);
+    try{ celebrate("Saved ✦ — open it any time to read, print, or save as PDF"); }catch(_){}
+  }catch(e){
+    try{ const w=window.open("","_blank"); if(w){ w.document.write(html); w.document.close(); } }catch(_){}
+  }
 }
 
 /* Guided, evidence-based micro-activities. Steps: plain text, or markers
@@ -2245,6 +2340,276 @@ function readAndCompress(file, cb, maxw){
     img.src = r.result;
   };
   r.readAsDataURL(file);
+}
+
+/* ============================================================
+   Bookshelf — the books she loves to review
+   ============================================================ */
+/* shared favorite lines — the quotes you both love */
+const SHELF_QUOTES = [
+  { text:"From that moment on, the world was hers for the reading. She would never be lonely again.", who:"Betty Smith", src:"A Tree Grows in Brooklyn" }
+];
+function shelfQuoteCard(){
+  if(!SHELF_QUOTES.length) return "";
+  const q = SHELF_QUOTES.length===1 ? SHELF_QUOTES[0] : pick(SHELF_QUOTES);
+  return `<div class="card tint" style="text-align:center">
+    <div class="hand" style="font-size:23px;color:var(--accent);line-height:1.38">“${esc(q.text)}”</div>
+    <div class="sub" style="margin-top:8px;margin-bottom:0">— ${esc(q.who)}, <em>${esc(q.src)}</em></div>
+  </div>`;
+}
+function starDisplay(n){ n=Math.max(0,Math.min(5,Math.round(n||0))); return "★".repeat(n)+"☆".repeat(5-n); }
+function readShort(d){ if(!d) return ""; try{ return new Date(d+"T00:00:00").toLocaleDateString(undefined,{month:"short",year:"numeric"}); }catch(e){ return ""; } }
+function readLong(d){ if(!d) return ""; try{ return new Date(d+"T00:00:00").toLocaleDateString(undefined,{month:"long",year:"numeric"}); }catch(e){ return ""; } }
+
+/* Reading tracker — totals per year, all-time count, average rating */
+function bookStats(){
+  const books = (DATA.books||[]).filter(b=> b.title || b.rating || b.finished);
+  if(!books.length) return "";
+  const byYear = {};
+  books.forEach(b=>{ const y=(b.finished||b.date||"").slice(0,4)||"—";
+    (byYear[y]=byYear[y]||[]).push(b); });
+  const years = Object.keys(byYear).sort((a,b)=> b.localeCompare(a));
+  const thisYear = String(new Date().getFullYear());
+  const total = books.length;
+  const thisYearN = (byYear[thisYear]||[]).length;
+  const rows = years.map(y=>{
+    const arr = byYear[y];
+    const rated = arr.filter(b=>b.rating>0);
+    const avg = rated.length ? (rated.reduce((s,b)=>s+b.rating,0)/rated.length) : 0;
+    return `<div class="stat-row">
+      <span class="sy">${esc(y)}</span>
+      <span class="sc">${arr.length} book${arr.length===1?"":"s"}</span>
+      <span class="dots"></span>
+      <span class="sr">${avg?("★ "+avg.toFixed(1)):"·"}</span>
+    </div>`;
+  }).join("");
+  return `<div class="card tint reading-card">
+    <div class="read-eyebrow">Your Reading</div>
+    <div class="read-hero"><span class="rn">${total}</span><span class="rl">book${total===1?"":"s"}<br>tended &amp; kept</span></div>
+    ${thisYearN?`<div class="read-sub">${thisYearN} read so far in ${thisYear} ✦</div>`:""}
+    <div class="stat-list">${rows}</div>
+  </div>`;
+}
+
+function bookCoverInner(b){
+  if(b.cover){ return `<img src="${esc(b.cover)}" alt="cover of ${esc(b.title||'this book')}" loading="lazy" onerror="this.parentElement.classList.add('placeholder');this.parentElement.innerHTML='<div class=&quot;ph-title&quot;>'+ (this.alt||'') +'</div>';" />`; }
+  return `<div class="ph-title">${esc(b.title||"Untitled")}</div><span class="ph-mark">${icon('book',18,'#b89a7d')}</span>`;
+}
+
+function view_books(){
+  if(_bookOpen){
+    const b = (DATA.books||[]).find(x=>x.id===_bookOpen);
+    if(b) return view_bookEdit(b);
+    _bookOpen = null;
+  }
+  const books = (DATA.books||[]).slice().sort((a,b)=>((b.finished||b.date)||"").localeCompare((a.finished||a.date)||""));
+  const cards = books.map(b=>{
+    const rd = readShort(b.finished||b.date);
+    return `
+    <button class="book-card" onclick="openBook('${b.id}')">
+      <div class="book-cover ${b.cover?'':'placeholder'}">${bookCoverInner(b)}</div>
+      <div class="book-meta">
+        <div class="bt">${esc(b.title||"Untitled")}</div>
+        ${b.author?`<div class="ba">${esc(b.author)}</div>`:""}
+        ${b.rating?`<div class="stars">${starDisplay(b.rating)}</div>`:""}
+        ${rd?`<div class="bread">Read ${esc(rd)}</div>`:""}
+      </div>
+    </button>`;}).join("");
+  return `
+    ${pageHead("Your Bookshelf", "Books", "The books you've read and loved — reviewed in your own words, kept in one beautiful place.", "book", "#C97B63")}
+    ${shelfQuoteCard()}
+    ${bookStats()}
+    <div class="book-grid">
+      <button class="book-card add-book-card" onclick="addBook()">
+        <div class="book-cover"><span class="plus">+</span><span class="al">Add a book</span></div>
+      </button>
+      ${cards}
+    </div>
+    ${books.length===0?`<p class="empty" style="margin-top:14px">Add the first book you'd like to review. There's no right way to do it — a sentence is plenty.</p>`:""}
+
+    <div class="card tint" style="margin-top:20px">
+      <h3>Want to Read</h3>
+      <p class="sub">A gentle list for someday — books you'd love to get to. No rush, no pressure.</p>
+      <div class="wtr-add">
+        <div class="wtr-field">
+          <input type="text" id="wtrInput" placeholder="Type a book title…" autocomplete="off" autocorrect="off" spellcheck="false" />
+          <div id="wtrResults" class="wtr-results" style="display:none"></div>
+        </div>
+        <button class="btn tiny" id="wtrAdd">Add</button>
+      </div>
+      ${(DATA.readingList||[]).length ? `<ul class="wtr-list">
+        ${DATA.readingList.slice().reverse().map(it=>`<li class="wtr-item">
+          <span class="wtr-item-cov">${it.cover?`<img src="${esc(it.cover)}" alt="" loading="lazy" />`:icon('book',14,'#b89a7d')}</span>
+          <span class="wtr-t"><span class="wtr-t-title">${esc(it.title)}</span>${it.author?`<span class="wtr-t-author">${esc(it.author)}</span>`:""}</span>
+          <button class="btn ghost tiny wtr-start" data-wtrstart="${it.id}">Read it ✦</button>
+          <button class="wtr-x" data-wtrdel="${it.id}" aria-label="remove">✕</button>
+        </li>`).join("")}
+      </ul>` : `<p class="empty" style="margin-top:8px">Nothing here yet — jot down a title whenever one catches your eye.</p>`}
+    </div>
+    ${footer()}
+  `;
+}
+
+function view_bookEdit(b){
+  const showSpoil = false; // spoiler zone always starts hidden — protected until she taps to reveal
+  return `
+    <button class="backchip" onclick="closeBook()">‹ Bookshelf</button>
+    ${pageHead("A Book", esc(b.title||"New book"), "", "book", "#C97B63")}
+    ${(b.finished||b.date)?`<div class="book-readline">Read in ${esc(readLong(b.finished||b.date))} ✦</div>`:""}
+
+    <div class="card tint">
+      <div class="cover-edit">
+        <div class="book-cover ${b.cover?'':'placeholder'}" id="bkCover">${bookCoverInner(b)}</div>
+        <div class="cover-actions">
+          <button class="btn tiny ghost" id="bkFindCover">${icon('sparkle',15)} Find cover</button>
+          <label class="btn tiny ghost" style="cursor:pointer;text-align:center">${icon('frame',15)} Take / choose photo
+            <input type="file" id="bkPhoto" accept="image/*" style="display:none" />
+          </label>
+          ${b.cover?`<button class="btn tiny" id="bkClearCover" style="background:transparent;color:var(--ink-soft);border:1px solid var(--line)">Remove cover</button>`:""}
+          <span id="bkCoverMsg" style="display:none;font-size:12.5px;color:var(--ink-soft);line-height:1.4"></span>
+        </div>
+      </div>
+
+      <div class="field-label">Title</div>
+      <input type="text" id="bkTitle" placeholder="The book's title" value="${esc(b.title||"")}" />
+      <div class="field-label">Author</div>
+      <input type="text" id="bkAuthor" placeholder="Who wrote it" value="${esc(b.author||"")}" />
+
+      <div class="field-label">Your rating</div>
+      <div class="stars-pick" id="bkStars">
+        ${[1,2,3,4,5].map(n=>`<button data-star="${n}" class="${(b.rating||0)>=n?'on':''}" aria-label="${n} star">★</button>`).join("")}
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>What it's about</h3>
+      <p class="sub">A spoiler-free summary — what the book is about, in your words.</p>
+      <textarea id="bkGist" placeholder="This book is about…">${esc(b.gist||"")}</textarea>
+    </div>
+
+    <div class="card">
+      <h3>My review</h3>
+      <p class="sub">Your honest thoughts — no spoilers here, so you can share it freely.</p>
+      <textarea id="bkReview" placeholder="What I loved, how it made me feel, what stayed with me…">${esc(b.review||"")}</textarea>
+    </div>
+
+    <div class="spoiler-zone">
+      <button class="spoiler-head" id="bkSpoilToggle" aria-expanded="${showSpoil?'true':'false'}">
+        ${icon('eye',17)} Spoiler zone
+        <span class="lock" id="bkSpoilLock">${showSpoil?'Hide spoilers':'🔒 Show spoilers'}</span>
+      </button>
+      <div class="spoiler-body ${showSpoil?'':'hidden'}" id="bkSpoilBody">
+        <p class="sub">Safe to spill everything — the ending, the twists, the parts you can't stop thinking about.</p>
+        <textarea id="bkSpoil" placeholder="The spoilery summary and everything I want to remember about how it ends…">${esc(b.spoilers||"")}</textarea>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="field-label">Favorite quote <span style="font-weight:400;color:var(--ink-soft)">(optional)</span></div>
+      <input type="text" id="bkQuote" placeholder="A line worth keeping" value="${esc(b.quote||"")}" />
+      <div class="field-label">Who I'd recommend it to <span style="font-weight:400;color:var(--ink-soft)">(optional)</span></div>
+      <input type="text" id="bkRec" placeholder="Anyone who…" value="${esc(b.recommend||"")}" />
+    </div>
+
+    <div class="book-saverow">
+      <button class="btn" id="bkSave">Save</button>
+      <span class="saved-note" id="bkSaved">Saved ✓</span>
+      <button class="btn tiny" id="bkDelete" style="margin-left:auto;background:transparent;color:var(--ink-soft);border:1px solid var(--line)">Delete book</button>
+    </div>
+    ${footer()}
+  `;
+}
+
+/* Bookshelf actions */
+function currentBook(){ return (DATA.books||[]).find(x=>x.id===_bookOpen); }
+function addToReadingList(title, author, cover){
+  const t=(title||"").trim(); if(!t) return;
+  DATA.readingList = DATA.readingList || [];
+  DATA.readingList.push({ id:uid(), title:t, author:(author||"").trim(), cover:cover||"", added:todayKey() });
+  saveData(DATA); buzz(); render();
+}
+function removeFromReadingList(id){
+  DATA.readingList = (DATA.readingList||[]).filter(x=>x.id!==id);
+  saveData(DATA); render();
+}
+function startFromReadingList(id){
+  const it=(DATA.readingList||[]).find(x=>x.id===id); if(!it) return;
+  const b={ id:uid(), date:todayKey(), finished:todayKey(), title:it.title, author:it.author||"", rating:0, cover:it.cover||"", coverType:it.cover?"url":"", gist:"", review:"", spoilers:"", quote:"", recommend:"" };
+  DATA.books=DATA.books||[]; DATA.books.push(b);
+  DATA.readingList=DATA.readingList.filter(x=>x.id!==id);
+  saveData(DATA); _bookOpen=b.id; buzz(); celebrate("Onto your shelf ✦"); go("books");
+}
+/* live typeahead against Open Library's catalog */
+function renderWtrResults(){
+  const box=document.getElementById("wtrResults"); if(!box) return;
+  if(!_wtrResults.length){ box.style.display="none"; box.innerHTML=""; return; }
+  box.innerHTML = _wtrResults.map((r,i)=>`<button type="button" class="wtr-res" onclick="pickReadingResult(${i})">
+    <span class="wtr-res-cov">${r.cover?`<img src="${esc(r.cover)}" alt="" loading="lazy" />`:icon('book',15,'#b89a7d')}</span>
+    <span class="wtr-res-txt"><span class="wtr-res-t">${esc(r.title)}</span>${r.author?`<span class="wtr-res-a">${esc(r.author)}</span>`:""}</span>
+  </button>`).join("");
+  box.style.display="block";
+}
+function pickReadingResult(i){
+  const r=_wtrResults[i]; if(!r) return;
+  addToReadingList(r.title, r.author, r.cover);
+  _wtrResults=[]; // render() will rebuild the shelf; dropdown clears with it
+}
+function wtrSearch(q){
+  const query=(q||"").trim();
+  const box=document.getElementById("wtrResults");
+  if(query.length<2){ _wtrResults=[]; if(box){ box.style.display="none"; box.innerHTML=""; } return; }
+  if(box){ box.style.display="block"; box.innerHTML='<div class="wtr-res-msg">Searching…</div>'; }
+  const url="https://openlibrary.org/search.json?limit=6&fields=title,author_name,cover_i&q="+encodeURIComponent(query);
+  const token = (window._wtrToken = (window._wtrToken||0)+1);
+  fetch(url).then(r=>r.json()).then(j=>{
+    if(token!==window._wtrToken) return; // a newer keystroke already fired
+    const docs=(j&&j.docs)||[];
+    _wtrResults = docs.map(d=>({
+      title:d.title||"",
+      author:(d.author_name&&d.author_name[0])||"",
+      cover:d.cover_i?("https://covers.openlibrary.org/b/id/"+d.cover_i+"-S.jpg"):""
+    })).filter(r=>r.title);
+    if(!_wtrResults.length && box){ box.style.display="block"; box.innerHTML='<div class="wtr-res-msg">No matches — tap “Add” to save it anyway.</div>'; return; }
+    renderWtrResults();
+  }).catch(()=>{ if(token!==window._wtrToken) return; if(box){ box.style.display="block"; box.innerHTML='<div class="wtr-res-msg">Couldn’t search just now — tap “Add” to save it anyway.</div>'; } });
+}
+function addBook(){
+  const b = { id:uid(), date:todayKey(), finished:todayKey(), title:"", author:"", rating:0, cover:"", coverType:"", gist:"", review:"", spoilers:"", quote:"", recommend:"" };
+  DATA.books = DATA.books || []; DATA.books.push(b);
+  saveData(DATA); _bookOpen = b.id; buzz(); go("books");
+}
+function openBook(id){ _bookOpen = id; go("books"); }
+function closeBook(){
+  // drop an empty, never-filled book so the shelf stays tidy
+  const b = currentBook();
+  if(b && !b.title && !b.author && !b.gist && !b.review && !b.spoilers && !b.rating && !b.cover){
+    DATA.books = DATA.books.filter(x=>x.id!==b.id); saveData(DATA);
+  }
+  _bookOpen = null; go("books");
+}
+function deleteBook(){
+  const b = currentBook(); if(!b) return;
+  DATA.books = DATA.books.filter(x=>x.id!==b.id);
+  saveData(DATA); _bookOpen = null; go("books"); celebrate("");
+}
+function bookFlashSaved(){ const s=document.getElementById("bkSaved"); if(s){ s.classList.add("show"); clearTimeout(window._bkSaveT); window._bkSaveT=setTimeout(()=>s.classList.remove("show"),1400);} }
+async function lookupBookCover(){
+  const b = currentBook(); if(!b) return;
+  const title=(document.getElementById("bkTitle")||{}).value||b.title||"";
+  const author=(document.getElementById("bkAuthor")||{}).value||b.author||"";
+  const msg=document.getElementById("bkCoverMsg");
+  if(!title.trim()){ if(msg){ msg.style.display="inline"; msg.textContent="Add a title first."; } return; }
+  if(msg){ msg.style.display="inline"; msg.textContent="Looking…"; }
+  try{
+    const q = "https://openlibrary.org/search.json?limit=8&fields=cover_i,title&title="+encodeURIComponent(title)+(author.trim()?("&author="+encodeURIComponent(author)):"");
+    const r = await fetch(q); const j = await r.json();
+    const hit = j && j.docs && j.docs.find(d=>d.cover_i);
+    const cid = hit && hit.cover_i;
+    if(cid){
+      b.cover = "https://covers.openlibrary.org/b/id/"+cid+"-L.jpg"; b.coverType="url";
+      saveData(DATA); render();
+    } else if(msg){ msg.style.display="inline"; msg.textContent="No cover found — try a photo."; }
+  }catch(e){ if(msg){ msg.style.display="inline"; msg.textContent="Couldn't reach the cover finder — try a photo."; } }
 }
 
 function view_family(){
@@ -2802,6 +3167,7 @@ function render(){
   else if (current==="hard") html = view_hard();
   else if (current==="family") html = view_family();
   else if (current==="mission") html = view_mission();
+  else if (current==="books") html = view_books();
   else if (current==="week") html = view_week();
   else if (current==="yearwoven") html = view_yearwoven();
   else if (current==="priorities") html = view_priorities();
@@ -2847,6 +3213,10 @@ function view_reflect(){
   const pages = (DATA.pages||[]).slice().sort((a,b)=> (b.date||"").localeCompare(a.date||""));
   const otd = onThisDay();
   return `${pageHead("Your journal", "The Page", "One place for everything you write and make. It saves here on its own — a journal you can keep, download, or print.", "feather", "#C9A15A")}
+    <div class="card tint" style="text-align:center">
+      <div class="hand" style="font-size:23px;color:var(--accent);line-height:1.38">“And, when you want something, all the universe conspires in helping you to achieve it.”</div>
+      <div class="sub" style="margin-top:8px;margin-bottom:0">— Paulo Coelho, <em>The Alchemist</em></div>
+    </div>
     ${otd ? `<div class="card tint"><h3>On This Day</h3><p class="sub">${esc(fmt(otd.date))} — a page you made then.</p>
       ${otd.img?`<div class="art-frame"><img src="${otd.img}" style="max-height:220px"/></div>`:""}
       ${otd.text?`<div class="entry"><div class="body">${esc(otd.text)}</div></div>`:""}</div>`:""}
@@ -3485,6 +3855,54 @@ function wire(){
   const bgClear=document.getElementById("bgClear");
   if(bgClear) bgClear.addEventListener("click", ()=>{ DATA.bgArt=""; saveData(DATA); applyBgArt(); render(); });
 
+  // Bookshelf: Want-to-Read list (shelf view)
+  if(current==="books" && !_bookOpen){
+    const wtrIn=document.getElementById("wtrInput"), wtrAdd=document.getElementById("wtrAdd");
+    if(wtrAdd) wtrAdd.addEventListener("click", ()=>{ addToReadingList(wtrIn?wtrIn.value:""); });
+    if(wtrIn){
+      wtrIn.addEventListener("input", ()=>{ clearTimeout(window._wtrT); const v=wtrIn.value; window._wtrT=setTimeout(()=>wtrSearch(v), 320); });
+      wtrIn.addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); clearTimeout(window._wtrT); addToReadingList(wtrIn.value); } });
+    }
+    if(!window._wtrOutsideWired){ window._wtrOutsideWired=true;
+      document.addEventListener("click",(e)=>{ const box=document.getElementById("wtrResults"); if(box && e.target && !e.target.closest(".wtr-field")){ box.style.display="none"; } });
+    }
+    document.querySelectorAll("[data-wtrstart]").forEach(x=>x.addEventListener("click", ()=>startFromReadingList(x.dataset.wtrstart)));
+    document.querySelectorAll("[data-wtrdel]").forEach(x=>x.addEventListener("click", ()=>removeFromReadingList(x.dataset.wtrdel)));
+  }
+
+  // Bookshelf: review editor
+  if(current==="books" && _bookOpen){
+    const b = (DATA.books||[]).find(x=>x.id===_bookOpen);
+    if(b){
+      const bindText=(id,key)=>{ const el=document.getElementById(id); if(!el) return;
+        el.addEventListener("input", ()=>{ b[key]=el.value; saveData(DATA); }); };
+      bindText("bkTitle","title"); bindText("bkAuthor","author");
+      bindText("bkGist","gist"); bindText("bkReview","review"); bindText("bkSpoil","spoilers");
+      bindText("bkQuote","quote"); bindText("bkRec","recommend");
+      document.querySelectorAll("#bkStars button").forEach(st=>st.addEventListener("click", ()=>{
+        const n=+st.dataset.star; b.rating = (b.rating===n)? n-1 : n; saveData(DATA); buzz();
+        document.querySelectorAll("#bkStars button").forEach(x=>x.classList.toggle("on", (+x.dataset.star)<=b.rating));
+        if(b.rating>=4) celebrate("");
+      }));
+      const fc=document.getElementById("bkFindCover"); if(fc) fc.addEventListener("click", lookupBookCover);
+      const ph=document.getElementById("bkPhoto"); if(ph) ph.addEventListener("change", ()=>{
+        const f=ph.files&&ph.files[0]; if(!f) return;
+        readAndCompress(f, (dataURL)=>{ b.cover=dataURL; b.coverType="photo"; saveData(DATA); render(); }, 360);
+      });
+      const cc=document.getElementById("bkClearCover"); if(cc) cc.addEventListener("click", ()=>{ b.cover=""; b.coverType=""; saveData(DATA); render(); });
+      const stog=document.getElementById("bkSpoilToggle"); if(stog) stog.addEventListener("click", ()=>{
+        const body=document.getElementById("bkSpoilBody"), lock=document.getElementById("bkSpoilLock");
+        const nowHidden=body.classList.toggle("hidden");
+        if(lock) lock.textContent = nowHidden ? "🔒 Show spoilers" : "Hide spoilers";
+        stog.setAttribute("aria-expanded", nowHidden?"false":"true"); buzz();
+      });
+      const sv=document.getElementById("bkSave"); if(sv) sv.addEventListener("click", ()=>{ saveData(DATA); bookFlashSaved(); buzz(); });
+      const dl=document.getElementById("bkDelete"); if(dl) dl.addEventListener("click", ()=>{
+        if(confirm("Remove this book from your shelf? This can't be undone.")) deleteBook();
+      });
+    }
+  }
+
   // Draft safety net — auto-save every text field so nothing typed is ever lost
   wireDrafts();
 }
@@ -3533,7 +3951,7 @@ try{ if('speechSynthesis' in window){
 go("today");
 cloudInit();
 </script>
-<script async src="audio.js"></script>
+<script>fetch("voices.json",{cache:"force-cache"}).then(function(r){return r.json();}).then(function(d){window.AUDIO=d;}).catch(function(){});</script>
 
 </body>
 </html>

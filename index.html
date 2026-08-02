@@ -646,6 +646,8 @@
   .stat-row .dots { flex:1; border-bottom:1.5px dotted var(--line); transform:translateY(-3px); min-width:14px; }
   .stat-row .sr { color:var(--gold); font-weight:600; flex:0 0 auto; }
   .book-readline { text-align:center; font-family:"Caveat", cursive; font-size:20px; color:var(--ink-soft); margin:-6px 0 14px; }
+  .blessing-card { text-align:center; }
+  .blessing-line { font-family:"Caveat", cursive; font-size:25px; line-height:1.4; color:var(--accent); margin-top:4px; }
   .wtr-add { display:flex; gap:8px; margin-top:6px; align-items:flex-start; }
   .wtr-field { position:relative; flex:1; min-width:0; }
   .wtr-field input { width:100%; }
@@ -859,6 +861,94 @@ const VERSES = [
   "“He healeth the broken in heart, and bindeth up their wounds.” — Psalm 147:3",
   "“Peace, be still.” — Mark 4:39",
   "“Charity suffereth long, and is kind.” — 1 Corinthians 13:4"
+];
+
+/* Daily TRUTH — the top banner. Short, powerful, worth-and-rest forward. One per day. */
+const TRUTHS = [
+  "The days you rest still count. Your worth today is already yours.",
+  "You are enough right now — before you do a single thing.",
+  "You don't have to earn your place. You already belong.",
+  "Being tired is not the same as failing. Rest is allowed.",
+  "You are loved in the middle of the mess, not only at the finish line.",
+  "Your worth was never up for debate. It just is.",
+  "You can do hard things gently. Softness is its own strength.",
+  "Slow is still moving. Little by little becomes a lot.",
+  "You are a person, not a to-do list.",
+  "The people you love need you rested more than they need you perfect.",
+  "You are allowed to take up space, to need things, to be held.",
+  "Grace covers the undone list. Let today be enough.",
+  "You have survived every hard day so far. Every single one.",
+  "Your body is a home to tend, not a problem to fix.",
+  "You are becoming, not behind.",
+  "Even on the quiet days, you are quietly growing.",
+  "You can begin again — as many times as you need.",
+  "What you carry is real, and you are carrying it with grace.",
+  "You don't have to hold it all at once. Set some of it down.",
+  "Your softness is a strength others lean on.",
+  "You are worthy of the care you so freely give away.",
+  "Rest is not falling behind. It's how you keep going.",
+  "You are more than your hardest day.",
+  "Tend yourself the way you tend everyone else.",
+  "The light you carry does not run out when you rest.",
+  "Small and steady is holy. So is being still.",
+  "You are doing better than you think you are.",
+  "Your presence is the gift — not your productivity.",
+  "Be gentle with yourself. You're doing something brave.",
+  "This season is not forever. You are held through it.",
+  "You are allowed to be a work in progress and still be worthy.",
+  "Come home to yourself today. You are welcome here.",
+  "Let it be enough that you tried. Trying counts.",
+  "You matter now — not once everything is done.",
+  "Gentleness will get you further than force ever could.",
+  "You are already loved, exactly as you are today."
+];
+
+/* Daily line for the Garden card (growing state) — showing up & growth. */
+const GARDEN_LINES = [
+  "Every time you show up — even just to rest — something grows. Nothing here ever wilts.",
+  "Each gentle day you tend yourself, your garden grows a little. It never fades.",
+  "This is proof: you keep showing up for yourself. Look how it's growing.",
+  "Every check-in plants something. Even the rest days count here.",
+  "Look what steady care has grown. None of it was wasted.",
+  "You've tended this, one gentle day at a time. It's beautiful.",
+  "Growth isn't loud. It's you, quietly showing up again and again.",
+  "Nothing here ever wilts — every day you tried is still blooming.",
+  "This garden remembers every time you chose to care for yourself.",
+  "Small and steady grew all of this. Keep going, gently."
+];
+
+/* Daily blessing — a warm closing bookend for the Today page. */
+const BLESSINGS = [
+  "May you feel, today, how deeply you are already loved.",
+  "May you be as gentle with yourself as you are with everyone else.",
+  "May you rest without guilt and receive without earning.",
+  "May you know that your worth is not something you have to prove today.",
+  "May you find one small moment of beauty and let it be enough.",
+  "May you be kind to the version of you that is simply doing her best.",
+  "May you carry today lightly, and set down what isn't yours to hold.",
+  "May you be held through the hard parts and delighted by the small ones.",
+  "May you remember that showing up, however quietly, is a victory.",
+  "May you feel strong where you need strength and soft where you need rest.",
+  "May grace meet you exactly where you are today.",
+  "May you trust that even slow, small steps are carrying you forward.",
+  "May you be at peace with an unfinished list and a well-loved heart.",
+  "May you see yourself the way those who love you see you.",
+  "May today hold more tenderness than pressure.",
+  "May you know you are enough, and always have been.",
+  "May you give yourself permission to simply be, today.",
+  "May you feel less alone, and more held, than you did yesterday.",
+  "May your body find ease, and your heart find rest.",
+  "May you end today knowing it counted — because you were in it.",
+  "May you be gentle in the places that ache, in body and in heart.",
+  "May you receive today as a gift, not a test.",
+  "May you find courage in small things and comfort in quiet ones.",
+  "May you be patient with your becoming.",
+  "May you let today be enough, and yourself be enough within it.",
+  "May you feel worthy of rest, of help, and of love.",
+  "May the good you can't see today still be growing.",
+  "May you speak to yourself the way you'd speak to your dearest friend.",
+  "May you find light in this day, and be light for someone in it.",
+  "May you be blessed with peace that doesn't depend on everything being done."
 ];
 
 /* Curated scriptures for a weary heart — each opens right in Gospel Library. */
@@ -1385,7 +1475,7 @@ function view_today(){
     ${pageHead(prettyDate(), `${g}, ${esc(CONFIG.ownerName)}.`, "", "sun", "#C9A15A")}
     ${CONFIG.motto?`<div class="hand" style="text-align:center;font-size:24px;color:var(--accent);margin:-8px 0 18px">“${esc(CONFIG.motto)}” ✦</div>`:""}
     <div class="banner"><span class="ic">${icon('sparkle',17,'#C9A15A')}</span>
-      <span>The days you rest still count. Your worth today is already yours.</span></div>
+      <span>${esc(pick(TRUTHS))}</span></div>
 
     <div class="card hero tint">
       <div class="whisper hand">“${pick(AFFIRMATIONS)}”</div>
@@ -1450,6 +1540,11 @@ function view_today(){
       <textarea id="todayNote" class="journal-paper" placeholder="Write a little… (tip: tap the 🎤 on your keyboard to speak instead of type)">${esc(todayNoteText)}</textarea>
       <div class="row" style="margin-top:8px"><span class="saved-note" id="noteSaved">Saved to your journal ✓</span>
         <button class="btn ghost tiny" style="margin-left:auto" onclick="go('reflect')">Open journal →</button></div>
+    </div>
+
+    <div class="card tint blessing-card">
+      <div class="read-eyebrow">Today's Blessing</div>
+      <div class="blessing-line">${esc(pick(BLESSINGS))}</div>
     </div>
     ${footer()}
   `;
@@ -2853,7 +2948,7 @@ function gardenCard(){
   const blooms = Array.from({length: Math.min(n,28)}, (_,i)=>`<span class="bloom">${icon('blossom',20,colors[i%colors.length])}</span>`).join("");
   return `<div class="card tint">
     <h3>Your Garden</h3>
-    <p class="sub">Every time you show up — even just to rest — something grows. Nothing here ever wilts.</p>
+    <p class="sub">${esc(pick(GARDEN_LINES))}</p>
     <div class="garden">${blooms}</div>
     <div class="garden-count"><b>${n}</b> day${n===1?'':'s'} you've shown up for yourself</div>
   </div>`;

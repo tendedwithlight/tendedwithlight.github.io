@@ -727,6 +727,21 @@
   .char-role.pri { background:var(--accent); color:#fff; }
   .char-x { flex:0 0 auto; border:0; background:transparent; cursor:pointer; color:var(--ink-soft); font-size:15px; padding:4px 6px; }
   .char-desc { margin-top:8px; min-height:52px; font-size:14px; }
+
+  /* ---------- Look Back ---------- */
+  .look-bar { display:flex; align-items:center; gap:10px; margin-top:6px; }
+  .look-bar input[type="date"] { flex:1; text-align:center; }
+  .look-arrow { flex:0 0 auto; width:40px; height:40px; border-radius:50%; border:1px solid var(--line);
+    background:var(--paper); color:var(--accent); font-size:22px; line-height:1; cursor:pointer; }
+  .look-arrow:active { transform:scale(0.94); }
+  .look-day { text-align:center; font-family:"Playfair Display", serif; font-size:18px; margin:12px 0 4px; color:var(--ink); }
+  .digest { margin-top:6px; }
+  .dg-sec { padding:12px 0; border-top:1px solid var(--line); }
+  .dg-sec:first-child { border-top:0; }
+  .dg-h { font-size:12px; letter-spacing:1.5px; text-transform:uppercase; color:var(--accent); font-weight:700; margin-bottom:8px; }
+  .dg-chips { display:flex; flex-wrap:wrap; gap:7px; }
+  .dg-chip { font-size:13px; background:var(--cream-2); border:1px solid var(--line); border-radius:20px; padding:5px 11px; }
+  .dg-line { font-size:14.5px; padding:4px 0; line-height:1.5; }
   .book-saverow { display:flex; align-items:center; gap:12px; margin-top:16px; flex-wrap:wrap; }
 </style>
 </head>
@@ -1417,6 +1432,7 @@ let _ywMonth = null; // Year Woven: selected month "YYYY-MM" (null = current)
 let _bookOpen = null; // Bookshelf: id of the book being viewed/edited (null = shelf)
 let _wtrResults = []; // Want-to-Read: latest live search results
 let _childOpen = null; // Family: id of the child page being viewed (null = family hub)
+let _lookDate = null;  // Reflect: the date selected in Look Back (YYYY-MM-DD)
 
 const TABS = [
   { key:"today",   label:"Today",   icon:"sun" },
@@ -3545,9 +3561,55 @@ function onThisDay(){
   if(past.length) return past.sort((a,b)=>b.date.localeCompare(a.date))[0];
   return null;
 }
+/* Look Back — everything from a chosen day, gathered in one place. */
+function shiftDateKey(dk, delta){
+  const p=dk.split("-"); const d=new Date(+p[0], +p[1]-1, +p[2]);
+  d.setDate(d.getDate()+delta);
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+const CARE_LABELS = { stretched:"🌿 Stretched", walked:"🚶 Walked", water:"💧 Water", rested:"😴 Rested",
+  prayed:"🙏 Prayed", kids:"🧸 Kids time", outside:"☀️ Outside", heat:"🔥 Heat / ice", ate:"🍎 Ate well", art:"🎨 Made art" };
+const NOURISH_LABELS = { veg:"🥗 Fruit & veg", protein:"🍗 Protein", home:"🍲 Home-cooked", slow:"🧘 Ate slowly", treat:"🍫 A treat" };
+function dayDigest(dk){
+  const BODY=["😣 Aching","😕 Tender","😌 Okay","🙂 Good","✨ Strong"];
+  const HEART=["🌧️ Heavy","🌥️ Low","⛅ Steady","🌤️ Light","☀️ Bright"];
+  const ci=(DATA.checkins&&DATA.checkins[dk])||{};
+  const pages=(DATA.pages||[]).filter(p=>p.date===dk);
+  const wins=(DATA.wins||[]).filter(w=>w.date===dk);
+  const disc=(DATA.discoveries||[]).filter(d=>d.date===dk);
+  const kidNotes=[]; (DATA.children||[]).forEach(c=>(c.notes||[]).forEach(n=>{ if(n.date===dk) kidNotes.push({name:c.name,text:n.text}); }));
+  const kidMoments=[]; (DATA.children||[]).forEach(c=>(c.moments||[]).forEach(m=>{ if(m.date===dk) kidMoments.push({name:c.name,id:m.id,caption:m.caption}); }));
+  const books=(DATA.books||[]).filter(b=>((b.finished||b.date)===dk) && (b.title));
+  const care=(ci.care||[]).map(k=> k.indexOf("c:")===0 ? ("✿ "+k.slice(2)) : (CARE_LABELS[k]||null)).filter(Boolean);
+  const nourish=(ci.nourish||[]).map(k=> k.indexOf("n:")===0 ? ("✿ "+k.slice(2)) : (NOURISH_LABELS[k]||null)).filter(Boolean);
+  const hasCheck = ci.body||ci.heart||(ci.comfort!=null)||care.length||nourish.length||ci.water;
+  const anything = hasCheck || pages.length || wins.length || disc.length || kidNotes.length || kidMoments.length || books.length;
+  if(!anything) return `<p class="empty" style="margin-top:6px">Nothing recorded on this day — and that's okay. The days you only rest still count.</p>`;
+  let h='<div class="digest">';
+  if(hasCheck){
+    const bits=[];
+    if(ci.body) bits.push(`<span class="dg-chip">Body: ${BODY[ci.body-1]||""}</span>`);
+    if(ci.heart) bits.push(`<span class="dg-chip">Heart: ${HEART[ci.heart-1]||""}</span>`);
+    if(ci.comfort!=null) bits.push(`<span class="dg-chip">Back & neck: ${ci.comfort}/10</span>`);
+    if(ci.water) bits.push(`<span class="dg-chip">💧 ${ci.water*16} oz</span>`);
+    care.forEach(c=>bits.push(`<span class="dg-chip">${esc(c)}</span>`));
+    nourish.forEach(c=>bits.push(`<span class="dg-chip">${esc(c)}</span>`));
+    h+=`<div class="dg-sec"><div class="dg-h">How you were</div><div class="dg-chips">${bits.join("")}</div></div>`;
+  }
+  if(pages.length){ h+=`<div class="dg-sec"><div class="dg-h">Journal</div>${pages.map(p=>`${p.img?`<div class="art-frame" style="margin:6px 0"><img src="${p.img}" style="max-height:200px"/></div>`:""}${p.text?`<div class="entry"><div class="body">${esc(p.text)}</div></div>`:""}`).join("")}</div>`; }
+  if(wins.length){ h+=`<div class="dg-sec"><div class="dg-h">Wins</div>${wins.map(w=>`<div class="dg-line">✦ ${esc(w.text||"")}</div>`).join("")}</div>`; }
+  if(disc.length){ h+=`<div class="dg-sec"><div class="dg-h">What you discovered</div>${disc.map(d=>`<div class="entry"><div class="whisper" style="font-size:14px">${esc(d.q||"")}</div><div class="body">${esc(d.a||"")}</div></div>`).join("")}</div>`; }
+  if(kidNotes.length){ h+=`<div class="dg-sec"><div class="dg-h">For the children</div>${kidNotes.map(n=>`<div class="dg-line"><b>${esc(n.name)}:</b> ${esc(n.text)}</div>`).join("")}</div>`; }
+  if(kidMoments.length){ h+=`<div class="dg-sec"><div class="dg-h">Moments</div><div class="moments-grid">${kidMoments.map(m=>`<div class="moment"><div class="moment-img"><img data-photo-id="${esc(m.id)}" alt="a moment"/></div>${m.caption?`<div class="moment-date">${esc(m.caption)}</div>`:""}<div class="moment-date">${esc(m.name)}</div></div>`).join("")}</div></div>`; }
+  if(books.length){ h+=`<div class="dg-sec"><div class="dg-h">Books</div>${books.map(b=>`<div class="dg-line">📖 ${esc(b.title)}${b.author?(" — "+esc(b.author)):""}</div>`).join("")}</div>`; }
+  h+='</div>';
+  return h;
+}
+
 function view_reflect(){
   const pages = (DATA.pages||[]).slice().sort((a,b)=> (b.date||"").localeCompare(a.date||""));
   const otd = onThisDay();
+  const look = _lookDate || todayKey();
   return `${pageHead("Your journal", "The Page", "One place for everything you write and make. It saves here on its own — a journal you can keep, download, or print.", "feather", "#C9A15A")}
     <div class="card tint" style="text-align:center">
       <div class="hand" style="font-size:23px;color:var(--accent);line-height:1.38">“And, when you want something, all the universe conspires in helping you to achieve it.”</div>
@@ -3556,6 +3618,18 @@ function view_reflect(){
     ${otd ? `<div class="card tint"><h3>On This Day</h3><p class="sub">${esc(fmt(otd.date))} — a page you made then.</p>
       ${otd.img?`<div class="art-frame"><img src="${otd.img}" style="max-height:220px"/></div>`:""}
       ${otd.text?`<div class="entry"><div class="body">${esc(otd.text)}</div></div>`:""}</div>`:""}
+
+    <div class="card tint">
+      <h3>Look Back</h3>
+      <p class="sub">Pick any day to see everything from it — your check-in, journal, wins, reflections, and notes for the kids. It's all here, always.</p>
+      <div class="look-bar">
+        <button class="look-arrow" id="lookPrev" aria-label="previous day">‹</button>
+        <input type="date" id="lookDate" value="${esc(look)}" max="${esc(todayKey())}" />
+        <button class="look-arrow" id="lookNext" aria-label="next day">›</button>
+      </div>
+      <div class="look-day">${esc(fmt(look))}</div>
+      ${dayDigest(look)}
+    </div>
 
     <div class="card tint">
       <h3>New Page</h3>
@@ -4267,6 +4341,14 @@ function wire(){
       document.querySelectorAll("[data-cmomcap]").forEach(inp=>inp.addEventListener("input", ()=>{ const m=(c.moments||[]).find(m=>m.id===inp.dataset.cmomcap); if(m){ m.caption=inp.value; saveData(DATA); } }));
     }
   }
+  // Reflect: Look Back date browser
+  if(current==="reflect"){
+    const ld=document.getElementById("lookDate");
+    if(ld) ld.addEventListener("change", ()=>{ if(ld.value){ _lookDate=ld.value; render(); } });
+    const lp=document.getElementById("lookPrev"); if(lp) lp.addEventListener("click", ()=>{ _lookDate=shiftDateKey(_lookDate||todayKey(), -1); render(); });
+    const ln=document.getElementById("lookNext"); if(ln) ln.addEventListener("click", ()=>{ const cur=_lookDate||todayKey(); if(cur>=todayKey()) return; _lookDate=shiftDateKey(cur, 1); render(); });
+  }
+
   hydratePhotos();
 
   // Draft safety net — auto-save every text field so nothing typed is ever lost
@@ -4316,6 +4398,18 @@ try{ if('speechSynthesis' in window){
 } }catch(e){}
 go("today");
 cloudInit();
+
+/* ---- Data-safety hardening ------------------------------------------------
+   1) Ask the browser to keep her data (prevents Safari from evicting it).
+   2) Force a save + cloud push the instant she closes or switches away,
+      so the very last thing she wrote always makes it up to the cloud.       */
+try{ if(navigator.storage && navigator.storage.persist){ navigator.storage.persisted().then(function(p){ if(!p) navigator.storage.persist(); }); } }catch(e){}
+function flushSave(){
+  try{ localStorage.setItem(KEY, JSON.stringify(DATA)); }catch(e){}
+  try{ if(_pushT){ clearTimeout(_pushT); _pushT=null; } cloudPush(); }catch(e){}
+}
+document.addEventListener("visibilitychange", function(){ if(document.visibilityState==="hidden") flushSave(); });
+window.addEventListener("pagehide", flushSave);
 </script>
 <script>fetch("voices.json",{cache:"force-cache"}).then(function(r){return r.json();}).then(function(d){window.AUDIO=d;}).catch(function(){});</script>
 

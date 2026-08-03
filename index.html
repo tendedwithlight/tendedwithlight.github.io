@@ -760,6 +760,8 @@
   .hm-soon { color:var(--accent); font-weight:600; }
   .hm-v { flex:0 0 auto; font-weight:600; color:var(--ink); }
   .hm-x { flex:0 0 auto; border:0; background:transparent; cursor:pointer; color:var(--ink-soft); font-size:14px; padding:4px 6px; }
+  .appt-cal { flex:0 0 auto; white-space:nowrap; text-decoration:none; }
+  .hm-add input[type="time"] { flex:0 0 auto; }
   .hn-list { margin-top:12px; }
   .book-saverow { display:flex; align-items:center; gap:12px; margin-top:16px; flex-wrap:wrap; }
 </style>
@@ -3581,9 +3583,36 @@ function apptDaysAway(dk){
     return diff===1 ? "tomorrow" : (diff>1 ? ("in "+diff+" days") : "");
   }catch(e){ return ""; }
 }
+function fmtTime12(t){ if(!t) return ""; const [h,m]=t.split(":").map(Number); const ap=h<12?"am":"pm"; const h12=((h+11)%12)+1; return h12+":"+String(m).padStart(2,"0")+" "+ap; }
+function _p2(n){ return String(n).padStart(2,"0"); }
+function apptICS(a){
+  const dk=(a.date||"").replace(/-/g,"");
+  let dtstart, dtend, alarm="";
+  if(a.time){
+    const [hh,mm]=a.time.split(":").map(Number);
+    let eh=hh, em=mm+45; if(em>=60){ em-=60; eh=(eh+1)%24; }
+    dtstart="DTSTART:"+dk+"T"+_p2(hh)+_p2(mm)+"00";
+    dtend="DTEND:"+dk+"T"+_p2(eh)+_p2(em)+"00";
+    alarm="BEGIN:VALARM\r\nACTION:DISPLAY\r\nDESCRIPTION:Reminder\r\nTRIGGER:-PT1H\r\nEND:VALARM\r\n";
+  } else {
+    dtstart="DTSTART;VALUE=DATE:"+dk;
+    dtend="DTEND;VALUE=DATE:"+shiftDateKey(a.date,1).replace(/-/g,"");
+  }
+  const n=new Date();
+  const stamp=n.getUTCFullYear()+_p2(n.getUTCMonth()+1)+_p2(n.getUTCDate())+"T"+_p2(n.getUTCHours())+_p2(n.getUTCMinutes())+_p2(n.getUTCSeconds())+"Z";
+  const clean=s=>String(s||"").replace(/[,;\\]/g," ").replace(/\r?\n/g," ");
+  const summary=clean((a.kind||"Appointment"));
+  const desc=clean(a.who);
+  let out="BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Lumen//EN\r\nCALSCALE:GREGORIAN\r\nBEGIN:VEVENT\r\nUID:"+a.id+"@lumen\r\nDTSTAMP:"+stamp+"\r\n"+dtstart+"\r\n"+dtend+"\r\nSUMMARY:"+summary+"\r\n";
+  if(desc) out+="DESCRIPTION:"+desc+"\r\n";
+  out+=alarm+"END:VEVENT\r\nEND:VCALENDAR";
+  return out;
+}
 function apptRow(a, upcoming){
   const days = upcoming ? apptDaysAway(a.date) : "";
-  return `<li><span class="hm-main">${esc(fmt(a.date))}${days?` · <span class="hm-soon">${esc(days)}</span>`:""}<br><span class="hm-sub">${esc(a.kind||"")}${a.who?(" · "+esc(a.who)):""}</span></span><button class="hm-x" data-adel="${a.id}" aria-label="remove">✕</button></li>`;
+  const timeLabel = a.time ? (" · "+fmtTime12(a.time)) : "";
+  const cal = upcoming ? `<a class="btn ghost tiny appt-cal" href="data:text/calendar;charset=utf-8,${encodeURIComponent(apptICS(a))}" download="appointment.ics">＋ Calendar</a>` : "";
+  return `<li><span class="hm-main">${esc(fmt(a.date))}${timeLabel}${days?` · <span class="hm-soon">${esc(days)}</span>`:""}<br><span class="hm-sub">${esc(a.kind||"")}${a.who?(" · "+esc(a.who)):""}</span></span>${cal}<button class="hm-x" data-adel="${a.id}" aria-label="remove">✕</button></li>`;
 }
 function view_health(){
   const day=todayKey();
@@ -3628,6 +3657,7 @@ function view_health(){
       <p class="sub">Chiropractor, physical therapy, doctor — the dates, all in one place.</p>
       <div class="hm-add appt-add">
         <input type="date" id="aDate" />
+        <input type="time" id="aTime" />
         <select id="aKind" class="voice-pick">
           <option value="Chiropractor">Chiropractor</option>
           <option value="Physical therapy">Physical therapy</option>
@@ -3638,6 +3668,7 @@ function view_health(){
         <input type="text" id="aWho" placeholder="Who / notes (optional)" />
         <button class="btn tiny" id="aAdd">Add</button>
       </div>
+      <p class="sub" style="margin-top:4px;font-size:12.5px">Add a time to get a phone reminder. After adding, tap <b>＋ Calendar</b> to drop it into your iPhone calendar with an alert.</p>
       ${upcoming.length?`<div class="hm-h">Upcoming</div><ul class="hm-list">${upcoming.map(a=>apptRow(a,true)).join("")}</ul>`:""}
       ${past.length?`<div class="hm-h">Past</div><ul class="hm-list">${past.slice(0,8).map(a=>apptRow(a,false)).join("")}</ul>`:""}
       ${(!upcoming.length&&!past.length)?`<p class="empty" style="margin-top:8px">No appointments yet.</p>`:""}
@@ -3666,7 +3697,7 @@ function view_health(){
 }
 function addWeight(){ const d=document.getElementById("wDate"), v=document.getElementById("wVal"); const val=parseFloat(v&&v.value); if(!(val>0)) return; DATA.weightLog=DATA.weightLog||[]; DATA.weightLog.push({id:uid(),date:(d&&d.value)||todayKey(),value:val,unit:"lb"}); saveData(DATA); buzz(); render(); }
 function deleteWeight(id){ DATA.weightLog=(DATA.weightLog||[]).filter(x=>x.id!==id); saveData(DATA); render(); }
-function addAppt(){ const d=document.getElementById("aDate"), k=document.getElementById("aKind"), w=document.getElementById("aWho"); if(!(d&&d.value)) return; DATA.appointments=DATA.appointments||[]; DATA.appointments.push({id:uid(),date:d.value,kind:(k&&k.value)||"",who:(w&&w.value.trim())||""}); saveData(DATA); buzz(); render(); }
+function addAppt(){ const d=document.getElementById("aDate"), t=document.getElementById("aTime"), k=document.getElementById("aKind"), w=document.getElementById("aWho"); if(!(d&&d.value)) return; DATA.appointments=DATA.appointments||[]; DATA.appointments.push({id:uid(),date:d.value,time:(t&&t.value)||"",kind:(k&&k.value)||"",who:(w&&w.value.trim())||""}); saveData(DATA); buzz(); render(); }
 function deleteAppt(id){ DATA.appointments=(DATA.appointments||[]).filter(x=>x.id!==id); saveData(DATA); render(); }
 function addHealthNote(){ const t=document.getElementById("hnTitle"), x=document.getElementById("hnText"); const text=(x&&x.value.trim()); if(!text) return; DATA.healthNotes=DATA.healthNotes||[]; DATA.healthNotes.push({id:uid(),date:todayKey(),title:(t&&t.value.trim())||"",text}); saveData(DATA); buzz(); celebrate(""); render(); }
 function deleteHealthNote(id){ DATA.healthNotes=(DATA.healthNotes||[]).filter(x=>x.id!==id); saveData(DATA); render(); }

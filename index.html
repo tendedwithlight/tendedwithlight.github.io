@@ -718,6 +718,15 @@
   .spoiler-head .lock { margin-left:auto; font-size:13px; color:var(--ink-soft); font-weight:500; }
   .spoiler-body { padding:12px 14px; }
   .spoiler-body.hidden { display:none; }
+  .char-list { margin-top:14px; display:flex; flex-direction:column; gap:12px; }
+  .char { border:1px solid var(--line); border-radius:14px; padding:11px 12px; background:var(--cream-2); }
+  .char-top { display:flex; align-items:center; gap:8px; }
+  .char-top .char-name { flex:1; min-width:0; margin:0; }
+  .char-role { flex:0 0 auto; border:1px solid var(--accent); background:transparent; color:var(--accent);
+    border-radius:20px; padding:6px 12px; font-family:inherit; font-size:12.5px; font-weight:600; cursor:pointer; white-space:nowrap; }
+  .char-role.pri { background:var(--accent); color:#fff; }
+  .char-x { flex:0 0 auto; border:0; background:transparent; cursor:pointer; color:var(--ink-soft); font-size:15px; padding:4px 6px; }
+  .char-desc { margin-top:8px; min-height:52px; font-size:14px; }
   .book-saverow { display:flex; align-items:center; gap:12px; margin-top:16px; flex-wrap:wrap; }
 </style>
 </head>
@@ -1326,7 +1335,7 @@ if (DATA.voiceOn === undefined) DATA.voiceOn = true;    // read-aloud voice ON b
 DATA.voiceName = DATA.voiceName || "";   // her chosen narrator voice (voiceURI)
 DATA.drafts    = DATA.drafts    || {};   // in-progress, unsaved text per field id — so nothing typed is ever lost
 DATA.books     = DATA.books     || [];   // her book reviews: [{id,date,finished,title,author,rating,cover,coverType,gist,review,spoilers,quote,recommend}]
-DATA.books.forEach(b=>{ if(!b.finished) b.finished = b.date || todayKey(); }); // date-read for older entries
+DATA.books.forEach(b=>{ if(!b.finished) b.finished = b.date || todayKey(); if(!b.characters) b.characters=[]; }); // date-read + character list for older entries
 DATA.readingList = DATA.readingList || []; // books she wants to read someday: [{id,title,added}]
 // Her children — notes/impressions + a moments gallery per child. Photos live in IndexedDB; notes/captions sync.
 DATA.children = DATA.children || [
@@ -2622,6 +2631,27 @@ function view_bookEdit(b){
       <textarea id="bkReview" placeholder="What I loved, how it made me feel, what stayed with me…">${esc(b.review||"")}</textarea>
     </div>
 
+    <div class="card">
+      <h3>Characters</h3>
+      <p class="sub">The people in the story. Tap “Find characters” to pull them in for well-known books, or add your own.</p>
+      <div class="row" style="gap:8px; flex-wrap:wrap; align-items:center">
+        <button class="btn tiny ghost" id="bkFindChars">${icon('sparkle',15)} Find characters</button>
+        <button class="btn tiny ghost" id="bkAddChar">＋ Add character</button>
+        <span id="bkCharMsg" style="display:none;font-size:12.5px;color:var(--ink-soft);line-height:1.4"></span>
+      </div>
+      <div class="char-list">
+        ${(b.characters||[]).map(ch=>`
+          <div class="char">
+            <div class="char-top">
+              <input type="text" class="char-name" data-charname="${ch.id}" placeholder="Name" value="${esc(ch.name||'')}" />
+              <button class="char-role ${ch.role==='secondary'?'sec':'pri'}" data-charrole="${ch.id}">${ch.role==='secondary'?'Secondary':'Primary'}</button>
+              <button class="char-x" data-chardel="${ch.id}" aria-label="remove">✕</button>
+            </div>
+            <textarea class="char-desc" data-chardesc="${ch.id}" placeholder="A brief description…">${esc(ch.desc||'')}</textarea>
+          </div>`).join("")}
+      </div>
+    </div>
+
     <div class="spoiler-zone">
       <button class="spoiler-head" id="bkSpoilToggle" aria-expanded="${showSpoil?'true':'false'}">
         ${icon('eye',17)} Spoiler zone
@@ -2663,7 +2693,7 @@ function removeFromReadingList(id){
 }
 function startFromReadingList(id){
   const it=(DATA.readingList||[]).find(x=>x.id===id); if(!it) return;
-  const b={ id:uid(), date:todayKey(), finished:todayKey(), title:it.title, author:it.author||"", rating:0, cover:it.cover||"", coverType:it.cover?"url":"", gist:"", review:"", spoilers:"", quote:"", recommend:"" };
+  const b={ id:uid(), date:todayKey(), finished:todayKey(), title:it.title, author:it.author||"", rating:0, cover:it.cover||"", coverType:it.cover?"url":"", gist:"", review:"", spoilers:"", quote:"", recommend:"", characters:[] };
   DATA.books=DATA.books||[]; DATA.books.push(b);
   DATA.readingList=DATA.readingList.filter(x=>x.id!==id);
   saveData(DATA); _bookOpen=b.id; buzz(); celebrate("Onto your shelf ✦"); go("books");
@@ -2703,7 +2733,7 @@ function wtrSearch(q){
   }).catch(()=>{ if(token!==window._wtrToken) return; if(box){ box.style.display="block"; box.innerHTML='<div class="wtr-res-msg">Couldn’t search just now — tap “Add” to save it anyway.</div>'; } });
 }
 function addBook(){
-  const b = { id:uid(), date:todayKey(), finished:todayKey(), title:"", author:"", rating:0, cover:"", coverType:"", gist:"", review:"", spoilers:"", quote:"", recommend:"" };
+  const b = { id:uid(), date:todayKey(), finished:todayKey(), title:"", author:"", rating:0, cover:"", coverType:"", gist:"", review:"", spoilers:"", quote:"", recommend:"", characters:[] };
   DATA.books = DATA.books || []; DATA.books.push(b);
   saveData(DATA); _bookOpen = b.id; buzz(); go("books");
 }
@@ -2739,6 +2769,94 @@ async function lookupBookCover(){
       saveData(DATA); render();
     } else if(msg){ msg.style.display="inline"; msg.textContent="No cover found — try a photo."; }
   }catch(e){ if(msg){ msg.style.display="inline"; msg.textContent="Couldn't reach the cover finder — try a photo."; } }
+}
+
+/* ---- Character list: manual + best-effort auto-fill from Wikipedia ---- */
+function addCharacter(){ const b=currentBook(); if(!b) return; b.characters=b.characters||[]; b.characters.push({id:uid(),name:"",role:"primary",desc:""}); saveData(DATA); render(); }
+function deleteCharacter(id){ const b=currentBook(); if(!b) return; b.characters=(b.characters||[]).filter(c=>c.id!==id); saveData(DATA); render(); }
+function showCharMsg(t){ const m=document.getElementById("bkCharMsg"); if(m){ m.style.display="inline"; m.textContent=t; } }
+async function findCharacters(){
+  const b=currentBook(); if(!b) return;
+  const title=((document.getElementById("bkTitle")||{}).value||b.title||"").trim();
+  const author=((document.getElementById("bkAuthor")||{}).value||b.author||"").trim();
+  if(!title){ showCharMsg("Add a title first."); return; }
+  showCharMsg("Looking on Wikipedia…");
+  try{
+    const found=await wikiCharacters(title, author);
+    if(found && found.length){
+      b.characters=b.characters||[];
+      const have=new Set(b.characters.map(c=>(c.name||"").toLowerCase()));
+      let added=0;
+      found.forEach(f=>{ const key=(f.name||"").toLowerCase(); if(f.name && !have.has(key)){ b.characters.push({id:uid(),name:f.name,role:f.role||"secondary",desc:f.desc||""}); have.add(key); added++; } });
+      saveData(DATA); buzz(); render();
+      // message is rebuilt by render(); use a toast instead
+      celebrate(added?`Found ${added} character${added===1?"":"s"} — edit freely ✦`:"Those are already on your list");
+    } else {
+      showCharMsg("Couldn't find a character list for this one — add them below.");
+    }
+  }catch(e){ showCharMsg("Couldn't search just now — add them below."); }
+}
+async function wikiCharacters(title, author){
+  const base="https://en.wikipedia.org/w/api.php", cors="format=json&origin=*";
+  const q=encodeURIComponent(title+(author?(" "+author):"")+" novel");
+  const r=await fetch(`${base}?action=query&list=search&srlimit=6&srsearch=${q}&${cors}`);
+  const j=await r.json();
+  const hits=((j.query&&j.query.search)||[]).map(h=>h.title);
+  if(!hits.length) return [];
+  // prefer a dedicated "... characters" article, then the book page(s)
+  const ordered=[...hits.filter(t=>/characters/i.test(t)), ...hits.filter(t=>!/characters/i.test(t))];
+  for(const page of ordered.slice(0,4)){
+    const chars=await wikiParseCharacters(base, cors, page);
+    if(chars.length>=2) return chars;
+  }
+  return [];
+}
+async function wikiParseCharacters(base, cors, page){
+  try{
+    const r=await fetch(`${base}?action=parse&page=${encodeURIComponent(page)}&prop=wikitext&${cors}`);
+    const j=await r.json();
+    const wt=j&&j.parse&&j.parse.wikitext&&j.parse.wikitext["*"]; if(!wt) return [];
+    const lines=wt.split("\n"); let inSec=false, secLevel=0, buf=[];
+    for(const ln of lines){
+      const hm=ln.match(/^(={2,})\s*(.+?)\s*\1\s*$/);
+      if(hm){
+        const level=hm[1].length, name=hm[2].replace(/<[^>]+>/g,"").replace(/'''?/g,"").trim();
+        if(/^(characters|main characters|principal characters|cast|list of .*characters|character list)\b/i.test(name)){ inSec=true; secLevel=level; buf=[]; continue; }
+        if(inSec && level<=secLevel) break;      // next same/higher heading ends the section
+        if(inSec) continue;                       // subheading inside characters — keep gathering
+      }
+      if(inSec) buf.push(ln);
+    }
+    return buf.length ? parseCharLines(buf.join("\n")) : [];
+  }catch(e){ return []; }
+}
+function _wikiClean(s){
+  return String(s)
+    .replace(/<ref[^>]*>[\s\S]*?<\/ref>/gi,"").replace(/<ref[^>]*\/>/gi,"")
+    .replace(/\{\{[^{}]*\}\}/g,"")
+    .replace(/\[\[(?:[^\]|]+\|)?([^\]]+)\]\]/g,"$1")
+    .replace(/'''?/g,"").replace(/<[^>]+>/g,"").replace(/&nbsp;/g," ")
+    .replace(/\s+/g," ").trim();
+}
+function parseCharLines(text){
+  const out=[];
+  text.split("\n").forEach(raw=>{
+    let ln=raw.trim();
+    if(!/^[*;:]/.test(ln)) return;               // list items only
+    ln=ln.replace(/^[*;:#\s]+/,"").replace(/\{\{[^{}]*\}\}/g,"").trim();
+    let name="", desc="", m;
+    if((m=ln.match(/^'''\s*\[?\[?(.+?)\]?\]?\s*'''\s*[:–—\-–—]?\s*([\s\S]*)$/))){ name=m[1]; desc=m[2]; }
+    else if((m=ln.match(/^\[\[([^\]|]+)(?:\|[^\]]+)?\]\]\s*[:–—\-–—]?\s*([\s\S]*)$/))){ name=m[1]; desc=m[2]; }
+    else if((m=ln.match(/^(.{2,44}?)\s*[–—–—:-]\s+([\s\S]+)$/))){ name=m[1]; desc=m[2]; }
+    if(!name) return;
+    name=_wikiClean(name).replace(/^["“”']+|["“”']+$/g,"").trim();
+    desc=_wikiClean(desc).replace(/^[\s,;:.–—-]+/,"").trim();
+    if(desc) desc=desc.charAt(0).toUpperCase()+desc.slice(1);
+    if(desc.length>240) desc=desc.slice(0,237).replace(/\s+\S*$/,"")+"…";
+    if(name && name.length<=60 && !/^see also$/i.test(name)) out.push({name, role:"secondary", desc});
+  });
+  out.slice(0,3).forEach(c=>c.role="primary");   // top few likely the leads; she can retag
+  return out.slice(0,20);
 }
 
 /* ============================================================
@@ -4108,6 +4226,13 @@ function wire(){
         readAndCompress(f, (dataURL)=>{ b.cover=dataURL; b.coverType="photo"; saveData(DATA); render(); }, 360);
       });
       const cc=document.getElementById("bkClearCover"); if(cc) cc.addEventListener("click", ()=>{ b.cover=""; b.coverType=""; saveData(DATA); render(); });
+      // Characters: auto-fill + manual
+      const fchar=document.getElementById("bkFindChars"); if(fchar) fchar.addEventListener("click", findCharacters);
+      const achar=document.getElementById("bkAddChar"); if(achar) achar.addEventListener("click", addCharacter);
+      document.querySelectorAll("[data-charname]").forEach(inp=>inp.addEventListener("input", ()=>{ const ch=(b.characters||[]).find(c=>c.id===inp.dataset.charname); if(ch){ ch.name=inp.value; saveData(DATA); } }));
+      document.querySelectorAll("[data-chardesc]").forEach(inp=>inp.addEventListener("input", ()=>{ const ch=(b.characters||[]).find(c=>c.id===inp.dataset.chardesc); if(ch){ ch.desc=inp.value; saveData(DATA); } }));
+      document.querySelectorAll("[data-charrole]").forEach(btn=>btn.addEventListener("click", ()=>{ const ch=(b.characters||[]).find(c=>c.id===btn.dataset.charrole); if(ch){ ch.role = ch.role==="secondary"?"primary":"secondary"; saveData(DATA); render(); } }));
+      document.querySelectorAll("[data-chardel]").forEach(btn=>btn.addEventListener("click", ()=>deleteCharacter(btn.dataset.chardel)));
       const stog=document.getElementById("bkSpoilToggle"); if(stog) stog.addEventListener("click", ()=>{
         const body=document.getElementById("bkSpoilBody"), lock=document.getElementById("bkSpoilLock");
         const nowHidden=body.classList.toggle("hidden");

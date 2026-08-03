@@ -742,6 +742,25 @@
   .dg-chips { display:flex; flex-wrap:wrap; gap:7px; }
   .dg-chip { font-size:13px; background:var(--cream-2); border:1px solid var(--line); border-radius:20px; padding:5px 11px; }
   .dg-line { font-size:14.5px; padding:4px 0; line-height:1.5; }
+
+  /* ---------- Health trackers ---------- */
+  .hm-add { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; align-items:center; }
+  .hm-add input[type="date"] { flex:0 0 auto; }
+  .hm-add input[type="number"] { flex:0 0 96px; }
+  .hm-add input[type="text"] { flex:1; min-width:120px; }
+  .hm-add .voice-pick { flex:0 0 auto; min-width:0; padding:9px 10px; }
+  .hm-add .btn { flex:0 0 auto; }
+  .appt-add { align-items:stretch; }
+  .hm-h { font-size:12px; letter-spacing:1.5px; text-transform:uppercase; color:var(--accent); font-weight:700; margin:14px 0 4px; }
+  .hm-list { list-style:none; margin:8px 0 0; padding:0; }
+  .hm-list li { display:flex; align-items:center; gap:10px; padding:9px 2px; border-top:1px solid var(--line); }
+  .hm-list li:first-child { border-top:0; }
+  .hm-main { flex:1; font-size:14.5px; line-height:1.35; }
+  .hm-sub { color:var(--ink-soft); font-size:12.5px; }
+  .hm-soon { color:var(--accent); font-weight:600; }
+  .hm-v { flex:0 0 auto; font-weight:600; color:var(--ink); }
+  .hm-x { flex:0 0 auto; border:0; background:transparent; cursor:pointer; color:var(--ink-soft); font-size:14px; padding:4px 6px; }
+  .hn-list { margin-top:12px; }
   .book-saverow { display:flex; align-items:center; gap:12px; margin-top:16px; flex-wrap:wrap; }
 </style>
 </head>
@@ -1193,7 +1212,8 @@ const DRAFT_SKIP = { ventNew:1, ventTry:1, cloudEmail:1, ltDate:1, comfort:1,
                      letGoText:1, todayNote:1, missionWhy:1, familyNote:1,
                      importFile:1, search:1,
                      bkTitle:1, bkAuthor:1, bkGist:1, bkReview:1, bkSpoil:1, bkQuote:1, bkRec:1,
-                     wtrInput:1, childNoteInput:1 };
+                     wtrInput:1, childNoteInput:1,
+                     aWho:1, hnTitle:1, hnText:1, wVal:1 };
 function clearDraft(id){
   if(DATA.drafts && DATA.drafts[id]!==undefined){ delete DATA.drafts[id]; saveData(DATA); }
 }
@@ -1360,6 +1380,10 @@ DATA.children = DATA.children || [
   { id:"lily",  name:"Lily",  photo:"", notes:[], moments:[] }
 ];
 DATA.children.forEach(c=>{ c.notes=c.notes||[]; c.moments=c.moments||[]; });
+// Health trackers
+DATA.weightLog = DATA.weightLog || [];       // [{id, date, value, unit}]
+DATA.appointments = DATA.appointments || []; // [{id, date, kind, who, note}]
+DATA.healthNotes = DATA.healthNotes || [];   // [{id, date, title, text}] — results & what the doctor/chiro said
 if (!DATA._migrated1) {                    // fold old journal entries into the one journal
   (DATA.journal||[]).forEach(j=>{ DATA.pages.push({ id:(j.id||(Math.random().toString(36).slice(2,9))), date:j.date, kind:"page", text:(j.prompt?("On: "+j.prompt+"\n\n"):"")+(j.text||""), img:"" }); });
   DATA._migrated1 = true; saveData(DATA);
@@ -1436,25 +1460,27 @@ let _lookDate = null;  // Reflect: the date selected in Look Back (YYYY-MM-DD)
 
 const TABS = [
   { key:"today",   label:"Today",   icon:"sun" },
+  { key:"health",  label:"Health",  icon:"pulse" },
   { key:"care",    label:"Care",    icon:"leaf" },
   { key:"reflect", label:"Reflect", icon:"feather" },
   { key:"family",  label:"Family",  icon:"home" },
-  { key:"mission", label:"4ABT",    icon:"sunrise" },
   { key:"books",   label:"Books",   icon:"book" },
-  { key:"gallery", label:"Gallery", icon:"frame" },
-  { key:"vent",    label:"Vent",    icon:"flame" }
+  { key:"mission", label:"4ABT",    icon:"sunrise" },
+  { key:"more",    label:"More",    icon:"compass" }
 ];
 const ACCENTS = {
   today:"#C9A15A", hard:"#D98E73", care:"#7E9B7A", reflect:"#C9A15A", more:"#8E7C93",
   recovery:"#8E7C93", emotional:"#C98A94", spiritual:"#C9A15A", physical:"#7E9B7A", intellectual:"#C97B63",
   gym:"#A87E96", exercises:"#7E9B7A", journal:"#C9A15A", week:"#C9A15A", priorities:"#8E7C93", rhythms:"#C98A94",
   yearwoven:"#B98BA4", family:"#D69B7A", mission:"#D9A24E", gallery:"#B98BA4", backup:"#9A8FA2",
-  books:"#C97B63", child:"#D69B7A"
+  books:"#C97B63", child:"#D69B7A", health:"#5E9B8E", more:"#8E7C93"
 };
 const PARENT = {
-  recovery:"care", emotional:"care", spiritual:"care", physical:"care", intellectual:"care", gym:"care", exercises:"care",
+  recovery:"care", emotional:"care", spiritual:"care", intellectual:"care",
+  physical:"health", gym:"health", exercises:"health",
   journal:"reflect", week:"reflect", priorities:"reflect", rhythms:"reflect",
-  letters:"reflect", yearwoven:"reflect", child:"family"
+  letters:"reflect", yearwoven:"reflect", child:"family",
+  gallery:"more", vent:"more", backup:"more"
 };
 
 function buildTabs(){
@@ -3520,6 +3546,7 @@ function render(){
   else if (current==="mission") html = view_mission();
   else if (current==="books") html = view_books();
   else if (current==="child") html = view_child(_childOpen);
+  else if (current==="health") html = view_health();
   else if (current==="week") html = view_week();
   else if (current==="yearwoven") html = view_yearwoven();
   else if (current==="priorities") html = view_priorities();
@@ -3542,16 +3569,115 @@ function hubCard(key, name, sub, ic, color){
     <span class="hc-sub">${sub}</span>
   </button>`;
 }
+/* ============================================================
+   Health — body/pain, food, water, weight, appointments, results,
+   plus body-care, exercises, and the gym. One home for the body.
+   ============================================================ */
+function apptDaysAway(dk){
+  try{ const t=todayKey(); if(dk===t) return "today";
+    const p=dk.split("-"), q=t.split("-");
+    const d=new Date(+p[0],+p[1]-1,+p[2]), n=new Date(+q[0],+q[1]-1,+q[2]);
+    const diff=Math.round((d-n)/86400000);
+    return diff===1 ? "tomorrow" : (diff>1 ? ("in "+diff+" days") : "");
+  }catch(e){ return ""; }
+}
+function apptRow(a, upcoming){
+  const days = upcoming ? apptDaysAway(a.date) : "";
+  return `<li><span class="hm-main">${esc(fmt(a.date))}${days?` · <span class="hm-soon">${esc(days)}</span>`:""}<br><span class="hm-sub">${esc(a.kind||"")}${a.who?(" · "+esc(a.who)):""}</span></span><button class="hm-x" data-adel="${a.id}" aria-label="remove">✕</button></li>`;
+}
+function view_health(){
+  const day=todayKey();
+  const ci=(DATA.checkins&&DATA.checkins[day])||{};
+  const BODY=["😣 Aching","😕 Tender","😌 Okay","🙂 Good","✨ Strong"];
+  const wl=(DATA.weightLog||[]).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  const latestW=wl[0];
+  const appts=(DATA.appointments||[]).slice().sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+  const upcoming=appts.filter(a=>(a.date||"")>=day);
+  const past=appts.filter(a=>(a.date||"")<day).reverse();
+  const notes=(DATA.healthNotes||[]).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  const snap=[];
+  if(ci.body) snap.push(`<span class="dg-chip">Body: ${BODY[ci.body-1]}</span>`);
+  if(ci.comfort!=null) snap.push(`<span class="dg-chip">Back & neck: ${ci.comfort}/10</span>`);
+  if(ci.water) snap.push(`<span class="dg-chip">💧 ${ci.water*16} oz</span>`);
+  if(ci.nourish&&ci.nourish.length) snap.push(`<span class="dg-chip">🍎 ${ci.nourish.length} noted</span>`);
+  return `
+    ${pageHead("Your body", "Health", "Everything for tending your body — your check-ins, food, movement, and care — gathered in one calm place.", "pulse", "#5E9B8E")}
+
+    <div class="card tint">
+      <h3>Today's Body</h3>
+      <p class="sub">A quick snapshot. Your daily check-in still lives on Today — tap below to log or update it.</p>
+      <div class="dg-chips" style="margin-top:4px">${snap.length?snap.join(""):`<span class="sub" style="font-style:italic">Nothing logged yet today.</span>`}</div>
+      <div class="row" style="margin-top:12px"><button class="btn tiny" onclick="go('today')">Log today's check-in →</button></div>
+    </div>
+
+    ${trendCard()}
+
+    <div class="card tint">
+      <h3>Weight</h3>
+      <p class="sub">A gentle log — no judgment, just a number to notice over time.${latestW?` Latest: <b>${esc(String(latestW.value))} ${esc(latestW.unit||'lb')}</b> · ${esc(fmt(latestW.date))}`:""}</p>
+      <div class="hm-add">
+        <input type="date" id="wDate" value="${day}" max="${day}" />
+        <input type="number" id="wVal" inputmode="decimal" step="0.1" placeholder="lb" />
+        <button class="btn tiny" id="wAdd">Add</button>
+      </div>
+      ${wl.length?`<ul class="hm-list">${wl.slice(0,12).map(w=>`<li><span class="hm-main">${esc(fmt(w.date))}</span><span class="hm-v">${esc(String(w.value))} ${esc(w.unit||'lb')}</span><button class="hm-x" data-wdel="${w.id}" aria-label="remove">✕</button></li>`).join("")}</ul>`:`<p class="empty" style="margin-top:8px">No entries yet.</p>`}
+    </div>
+
+    <div class="card tint">
+      <h3>Appointments</h3>
+      <p class="sub">Chiropractor, physical therapy, doctor — the dates, all in one place.</p>
+      <div class="hm-add appt-add">
+        <input type="date" id="aDate" />
+        <select id="aKind" class="voice-pick">
+          <option value="Chiropractor">Chiropractor</option>
+          <option value="Physical therapy">Physical therapy</option>
+          <option value="Doctor">Doctor</option>
+          <option value="Massage">Massage</option>
+          <option value="Other">Other</option>
+        </select>
+        <input type="text" id="aWho" placeholder="Who / notes (optional)" />
+        <button class="btn tiny" id="aAdd">Add</button>
+      </div>
+      ${upcoming.length?`<div class="hm-h">Upcoming</div><ul class="hm-list">${upcoming.map(a=>apptRow(a,true)).join("")}</ul>`:""}
+      ${past.length?`<div class="hm-h">Past</div><ul class="hm-list">${past.slice(0,8).map(a=>apptRow(a,false)).join("")}</ul>`:""}
+      ${(!upcoming.length&&!past.length)?`<p class="empty" style="margin-top:8px">No appointments yet.</p>`:""}
+    </div>
+
+    <div class="card tint">
+      <h3>Results & Notes</h3>
+      <p class="sub">What the doctor or chiropractor said, test results, what's helping — so you never have to hold it all in your head.</p>
+      <input type="text" id="hnTitle" placeholder="Title (e.g. Chiro visit, MRI results)" />
+      <textarea id="hnText" placeholder="What they said, what to try, how you felt…" style="margin-top:8px"></textarea>
+      <div class="row" style="margin-top:10px"><button class="btn tiny" id="hnAdd">Save note</button></div>
+      ${notes.length?`<div class="hn-list">${notes.map(n=>`<div class="entry"><div class="meta"><span>${esc(fmt(n.date))}${n.title?` · <b>${esc(n.title)}</b>`:""}</span><button class="x" data-hndel="${n.id}" style="margin-left:auto;border:0;background:transparent;cursor:pointer;color:var(--ink-soft)">✕</button></div><div class="body">${esc(n.text)}</div></div>`).join("")}</div>`:""}
+    </div>
+
+    <div class="card tint">
+      <h3>Movement & Body Care</h3>
+      <p class="sub">Gentle routines built around your back and neck.</p>
+      <div class="hub" style="margin-top:8px">
+        ${hubCard("physical","Body Care","Gentle daily practices","leaf","#7E9B7A")}
+        ${hubCard("exercises","Exercises","25 gentle back & neck moves","pulse","#7E9B7A")}
+        ${hubCard("gym","My Gym","Your equipment & workouts","lotus","#A87E96")}
+      </div>
+    </div>
+    ${footer()}
+  `;
+}
+function addWeight(){ const d=document.getElementById("wDate"), v=document.getElementById("wVal"); const val=parseFloat(v&&v.value); if(!(val>0)) return; DATA.weightLog=DATA.weightLog||[]; DATA.weightLog.push({id:uid(),date:(d&&d.value)||todayKey(),value:val,unit:"lb"}); saveData(DATA); buzz(); render(); }
+function deleteWeight(id){ DATA.weightLog=(DATA.weightLog||[]).filter(x=>x.id!==id); saveData(DATA); render(); }
+function addAppt(){ const d=document.getElementById("aDate"), k=document.getElementById("aKind"), w=document.getElementById("aWho"); if(!(d&&d.value)) return; DATA.appointments=DATA.appointments||[]; DATA.appointments.push({id:uid(),date:d.value,kind:(k&&k.value)||"",who:(w&&w.value.trim())||""}); saveData(DATA); buzz(); render(); }
+function deleteAppt(id){ DATA.appointments=(DATA.appointments||[]).filter(x=>x.id!==id); saveData(DATA); render(); }
+function addHealthNote(){ const t=document.getElementById("hnTitle"), x=document.getElementById("hnText"); const text=(x&&x.value.trim()); if(!text) return; DATA.healthNotes=DATA.healthNotes||[]; DATA.healthNotes.push({id:uid(),date:todayKey(),title:(t&&t.value.trim())||"",text}); saveData(DATA); buzz(); celebrate(""); render(); }
+function deleteHealthNote(id){ DATA.healthNotes=(DATA.healthNotes||[]).filter(x=>x.id!==id); saveData(DATA); render(); }
+
 function view_care(){
-  return `${pageHead("Tend yourself", "Care", "Small, gentle ways to tend each part of your life — and your body. Tap in only when you want to.", "leaf", "#7E9B7A")}
+  return `${pageHead("Tend yourself", "Care", "Small, gentle ways to tend each part of your life. Tap in only when you want to.", "leaf", "#7E9B7A")}
     <div class="hub">
       ${hubCard("recovery","Recovery","Rest & restoration","moon","#8E7C93")}
       ${hubCard("emotional","Emotional","Feeling & tending your heart","heart","#C98A94")}
       ${hubCard("spiritual","Spiritual","Roots, stillness & study","sparkle","#C9A15A")}
-      ${hubCard("physical","Physical","Tending your body","leaf","#7E9B7A")}
       ${hubCard("intellectual","Intellectual","Feeding your mind & art","book","#C97B63")}
-      ${hubCard("exercises","Exercises","25 gentle back & neck moves","pulse","#7E9B7A")}
-      ${hubCard("gym","My Gym","Your equipment & workouts","lotus","#A87E96")}
     </div>
     ${footer()}`;
 }
@@ -3689,12 +3815,11 @@ function view_reflect(){
     ${footer()}`;
 }
 function view_more(){
-  return `${pageHead("Her world", "More", "The people and things that make you you.", "compass", "#8E7C93")}
+  return `${pageHead("A little more", "More", "A few more corners of your world.", "compass", "#8E7C93")}
     <div class="hub">
-      ${hubCard("family","Family","Your first and greatest mission","home","#D69B7A")}
-      ${hubCard("mission","4 A Better Tomorrow","Your calling in the world","sunrise","#D9A24E")}
       ${hubCard("gallery","Gallery","Your own art, gathered","frame","#B98BA4")}
       ${hubCard("vent","Vent Space","Private & passcode-locked","flame","#C0714E")}
+      ${hubCard("backup","Backup & Data","Keep a copy safe","keepsake","#9A8FA2")}
     </div>
     <p class="footer-note" style="opacity:0.8">everything you write saves by itself ✦</p>
     ${footer()}`;
@@ -4341,6 +4466,16 @@ function wire(){
       document.querySelectorAll("[data-cmomcap]").forEach(inp=>inp.addEventListener("input", ()=>{ const m=(c.moments||[]).find(m=>m.id===inp.dataset.cmomcap); if(m){ m.caption=inp.value; saveData(DATA); } }));
     }
   }
+  // Health: weight, appointments, results & notes
+  if(current==="health"){
+    const wa=document.getElementById("wAdd"); if(wa) wa.addEventListener("click", addWeight);
+    const aa=document.getElementById("aAdd"); if(aa) aa.addEventListener("click", addAppt);
+    const ha=document.getElementById("hnAdd"); if(ha) ha.addEventListener("click", addHealthNote);
+    document.querySelectorAll("[data-wdel]").forEach(b=>b.addEventListener("click", ()=>deleteWeight(b.dataset.wdel)));
+    document.querySelectorAll("[data-adel]").forEach(b=>b.addEventListener("click", ()=>deleteAppt(b.dataset.adel)));
+    document.querySelectorAll("[data-hndel]").forEach(b=>b.addEventListener("click", ()=>deleteHealthNote(b.dataset.hndel)));
+  }
+
   // Reflect: Look Back date browser
   if(current==="reflect"){
     const ld=document.getElementById("lookDate");

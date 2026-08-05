@@ -763,6 +763,35 @@
   .appt-cal { flex:0 0 auto; white-space:nowrap; text-decoration:none; }
   .hm-add input[type="time"] { flex:0 0 auto; }
   .hn-list { margin-top:12px; }
+
+  /* ---------- Cycle tracker ---------- */
+  .cyc-summary:active { transform:scale(0.99); }
+  .cyc-hero { text-align:center; }
+  .cyc-day { font-family:"Playfair Display", serif; font-size:32px; font-weight:600; color:var(--accent); }
+  .cyc-phase { font-size:14px; letter-spacing:1.5px; text-transform:uppercase; color:var(--ink-soft); font-weight:600; margin-top:2px; }
+  .cyc-note { font-family:"Caveat", cursive; font-size:20px; color:var(--ink-soft); margin-top:8px; line-height:1.35; }
+  .cyc-nav { display:flex; align-items:center; justify-content:space-between; margin:4px 0 10px; }
+  .cyc-month { font-family:"Playfair Display", serif; font-size:17px; }
+  .cyc-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; }
+  .cyc-dow { margin-bottom:4px; }
+  .cyc-dowc { text-align:center; font-size:11px; color:var(--ink-soft); font-weight:600; }
+  .cyc-cell { aspect-ratio:1/1; border:0; background:transparent; border-radius:50%; font-family:inherit; font-size:13.5px;
+    color:var(--ink); cursor:pointer; display:flex; align-items:center; justify-content:center; position:relative; padding:0; }
+  .cyc-cell.empty { visibility:hidden; cursor:default; }
+  .cyc-cell:active { transform:scale(0.9); }
+  .cyc-cell.bleed { background:#C98A94; color:#fff; font-weight:600; }
+  .cyc-cell.pred { box-shadow:inset 0 0 0 1.5px #E3B7BE; color:#B06B78; }
+  .cyc-cell.fert { background:rgba(126,155,122,0.20); }
+  .cyc-cell.ov { box-shadow:inset 0 0 0 2px #7E9B7A; color:#5E7A5A; font-weight:600; }
+  .cyc-cell.today { outline:2px solid var(--gold); outline-offset:1px; }
+  .cyc-cell.logged::after { content:""; position:absolute; bottom:5px; width:4px; height:4px; border-radius:50%; background:var(--accent); }
+  .cyc-legend { display:flex; flex-wrap:wrap; gap:12px; justify-content:center; margin-top:12px; font-size:12px; color:var(--ink-soft); }
+  .cyc-legend span { display:inline-flex; align-items:center; gap:5px; }
+  .cyc-legend .lg { width:12px; height:12px; border-radius:50%; display:inline-block; }
+  .cyc-legend .lg.bleed { background:#C98A94; }
+  .cyc-legend .lg.pred { box-shadow:inset 0 0 0 1.5px #E3B7BE; }
+  .cyc-legend .lg.fert { background:rgba(126,155,122,0.30); }
+  .cyc-legend .lg.ov { box-shadow:inset 0 0 0 2px #7E9B7A; }
   .book-saverow { display:flex; align-items:center; gap:12px; margin-top:16px; flex-wrap:wrap; }
 </style>
 </head>
@@ -1386,6 +1415,12 @@ DATA.children.forEach(c=>{ c.notes=c.notes||[]; c.moments=c.moments||[]; });
 DATA.weightLog = DATA.weightLog || [];       // [{id, date, value, unit}]
 DATA.appointments = DATA.appointments || []; // [{id, date, kind, who, note}]
 DATA.healthNotes = DATA.healthNotes || [];   // [{id, date, title, text}] — results & what the doctor/chiro said
+// Cycle tracker
+DATA.cycle = DATA.cycle || {};
+DATA.cycle.bleed = DATA.cycle.bleed || {};   // { 'YYYY-MM-DD': true } — days marked as period/bleeding
+DATA.cycle.days  = DATA.cycle.days  || {};   // { 'YYYY-MM-DD': {symptoms:[], mood:'', note:''} } — optional wellness log
+if(DATA.cycle.cycleLen==null) DATA.cycle.cycleLen = 28;
+if(DATA.cycle.periodLen==null) DATA.cycle.periodLen = 5;
 if (!DATA._migrated1) {                    // fold old journal entries into the one journal
   (DATA.journal||[]).forEach(j=>{ DATA.pages.push({ id:(j.id||(Math.random().toString(36).slice(2,9))), date:j.date, kind:"page", text:(j.prompt?("On: "+j.prompt+"\n\n"):"")+(j.text||""), img:"" }); });
   DATA._migrated1 = true; saveData(DATA);
@@ -1459,6 +1494,7 @@ let _bookOpen = null; // Bookshelf: id of the book being viewed/edited (null = s
 let _wtrResults = []; // Want-to-Read: latest live search results
 let _childOpen = null; // Family: id of the child page being viewed (null = family hub)
 let _lookDate = null;  // Reflect: the date selected in Look Back (YYYY-MM-DD)
+let _cycMonth = null;  // Cycle: the month shown on the calendar (YYYY-MM; null = current)
 
 const TABS = [
   { key:"today",   label:"Today",   icon:"sun" },
@@ -1475,11 +1511,11 @@ const ACCENTS = {
   recovery:"#8E7C93", emotional:"#C98A94", spiritual:"#C9A15A", physical:"#7E9B7A", intellectual:"#C97B63",
   gym:"#A87E96", exercises:"#7E9B7A", journal:"#C9A15A", week:"#C9A15A", priorities:"#8E7C93", rhythms:"#C98A94",
   yearwoven:"#B98BA4", family:"#D69B7A", mission:"#D9A24E", gallery:"#B98BA4", backup:"#9A8FA2",
-  books:"#C97B63", child:"#D69B7A", health:"#5E9B8E", more:"#8E7C93"
+  books:"#C97B63", child:"#D69B7A", health:"#5E9B8E", more:"#8E7C93", cycle:"#C98A94"
 };
 const PARENT = {
   recovery:"care", emotional:"care", spiritual:"care", intellectual:"care",
-  physical:"health", gym:"health", exercises:"health",
+  physical:"health", gym:"health", exercises:"health", cycle:"health",
   journal:"reflect", week:"reflect", priorities:"reflect", rhythms:"reflect",
   letters:"reflect", yearwoven:"reflect", child:"family",
   gallery:"more", vent:"more", backup:"more"
@@ -3549,6 +3585,7 @@ function render(){
   else if (current==="books") html = view_books();
   else if (current==="child") html = view_child(_childOpen);
   else if (current==="health") html = view_health();
+  else if (current==="cycle") html = view_cycle();
   else if (current==="week") html = view_week();
   else if (current==="yearwoven") html = view_yearwoven();
   else if (current==="priorities") html = view_priorities();
@@ -3571,6 +3608,177 @@ function hubCard(key, name, sub, ic, color){
     <span class="hc-sub">${sub}</span>
   </button>`;
 }
+/* ============================================================
+   Cycle tracker — gentle period/cycle awareness. Estimates only.
+   ============================================================ */
+function daysBetween(a,b){ // b - a in whole days
+  const pa=a.split("-"), pb=b.split("-");
+  const da=Date.UTC(+pa[0],+pa[1]-1,+pa[2]), db=Date.UTC(+pb[0],+pb[1]-1,+pb[2]);
+  return Math.round((db-da)/86400000);
+}
+function cycleGroups(){ // consecutive bleed days -> [{start,end,len}]
+  const days=Object.keys((DATA.cycle&&DATA.cycle.bleed)||{}).filter(k=>DATA.cycle.bleed[k]).sort();
+  const groups=[]; let cur=null;
+  days.forEach(d=>{
+    if(cur && daysBetween(cur.end,d)===1){ cur.end=d; cur.len++; }
+    else { if(cur) groups.push(cur); cur={start:d,end:d,len:1}; }
+  });
+  if(cur) groups.push(cur);
+  return groups;
+}
+function cycleStats(){
+  const groups=cycleGroups();
+  const starts=groups.map(g=>g.start);
+  let avgCycle=DATA.cycle.cycleLen||28, avgPeriod=DATA.cycle.periodLen||5;
+  if(starts.length>=2){
+    const gaps=[]; for(let i=1;i<starts.length;i++) gaps.push(daysBetween(starts[i-1],starts[i]));
+    const recent=gaps.slice(-6);
+    avgCycle=Math.max(21,Math.min(40,Math.round(recent.reduce((s,x)=>s+x,0)/recent.length)));
+  }
+  const lens=groups.map(g=>g.len).filter(x=>x>0);
+  if(lens.length) avgPeriod=Math.max(2,Math.min(10,Math.round(lens.slice(-6).reduce((s,x)=>s+x,0)/lens.length)));
+  const today=todayKey();
+  let lastStart=null;
+  for(const s of starts){ if(s<=today) lastStart=s; }
+  if(!lastStart && starts.length) lastStart=starts[starts.length-1];
+  // predicted period / fertile / ovulation sets
+  const predPeriod={}, fertile={}, ov={};
+  let nextStart=null;
+  if(lastStart){
+    nextStart=shiftDateKey(lastStart, avgCycle);
+    while(nextStart<today) nextStart=shiftDateKey(nextStart, avgCycle); // in case she's overdue/unlogged
+    for(let k=0;k<4;k++){
+      const ps=shiftDateKey(lastStart, avgCycle*(k+1));
+      for(let i=0;i<avgPeriod;i++) predPeriod[shiftDateKey(ps,i)]=1;
+      const o=shiftDateKey(ps,-14); ov[o]=1;
+      for(let i=-5;i<=1;i++) fertile[shiftDateKey(o,i)]=1;
+    }
+  }
+  const cycleDay = lastStart ? (daysBetween(lastStart,today)+1) : null;
+  const ovDayNum = avgCycle-14;
+  let phase=null, phaseNote="";
+  if(cycleDay!=null){
+    const isBleedToday = DATA.cycle.bleed[today];
+    if(isBleedToday || cycleDay<=avgPeriod){ phase="Menstrual"; phaseNote="Rest and be gentle with yourself — your body is working hard."; }
+    else if(cycleDay>=ovDayNum-1 && cycleDay<=ovDayNum+1){ phase="Ovulation"; phaseNote="Your energy often peaks around now."; }
+    else if(cycleDay<ovDayNum-1){ phase="Follicular"; phaseNote="Energy usually builds through this stretch."; }
+    else { phase="Luteal"; phaseNote="A softer, slower season of the cycle — extra rest helps."; }
+  }
+  return { groups, starts, avgCycle, avgPeriod, lastStart, nextStart, cycleDay, phase, phaseNote, predPeriod, fertile, ov };
+}
+function toggleBleed(dk){
+  DATA.cycle.bleed = DATA.cycle.bleed||{};
+  if(DATA.cycle.bleed[dk]) delete DATA.cycle.bleed[dk]; else DATA.cycle.bleed[dk]=true;
+  saveData(DATA); buzz(); render();
+}
+const CYC_SYMPTOMS=[["cramps","Cramps"],["headache","Headache"],["tender","Tender"],["tired","Tired"],["bloated","Bloated"],["moody","Moody"],["nausea","Nausea"],["backache","Backache"],["cravings","Cravings"]];
+function toggleCycSymptom(key){
+  const t=todayKey(); DATA.cycle.days=DATA.cycle.days||{};
+  const d=DATA.cycle.days[t]=DATA.cycle.days[t]||{symptoms:[],mood:"",note:""};
+  d.symptoms=d.symptoms||[];
+  if(d.symptoms.includes(key)) d.symptoms=d.symptoms.filter(x=>x!==key); else d.symptoms.push(key);
+  saveData(DATA); buzz(); render();
+}
+function monthGrid(ym){ // returns array of {dk|null} for a 6-week grid
+  const [y,m]=ym.split("-").map(Number);
+  const first=new Date(Date.UTC(y,m-1,1));
+  const startDow=first.getUTCDay(); // 0 Sun
+  const daysInMonth=new Date(Date.UTC(y,m,0)).getUTCDate();
+  const cells=[];
+  for(let i=0;i<startDow;i++) cells.push(null);
+  for(let d=1;d<=daysInMonth;d++) cells.push(y+"-"+String(m).padStart(2,"0")+"-"+String(d).padStart(2,"0"));
+  while(cells.length%7!==0) cells.push(null);
+  return cells;
+}
+function view_cycle(){
+  const s=cycleStats();
+  const today=todayKey();
+  const ym=_cycMonth || today.slice(0,7);
+  const [yy,mm]=ym.split("-").map(Number);
+  const monthLabel=new Date(Date.UTC(yy,mm-1,1)).toLocaleDateString(undefined,{month:"long",year:"numeric"});
+  const cells=monthGrid(ym);
+  const dow=["S","M","T","W","T","F","S"];
+  const isOpenPeriod = s.groups.length && !s.groups[s.groups.length-1] ? false : false;
+  const todayBleed = DATA.cycle.bleed[today];
+  const dLog=(DATA.cycle.days&&DATA.cycle.days[today])||{symptoms:[]};
+  // status line
+  let statusTop="", statusSub="";
+  if(s.cycleDay!=null){ statusTop=`Cycle Day ${s.cycleDay}`; statusSub=s.phase?`${s.phase} phase`:""; }
+  else { statusTop="Let's begin"; statusSub="Tap the days of your period to start"; }
+  // predictions
+  let predLine="";
+  if(s.nextStart){
+    const inDays=daysBetween(today,s.nextStart);
+    const ovDate=shiftDateKey(s.nextStart,-14);
+    const fStart=shiftDateKey(ovDate,-5), fEnd=shiftDateKey(ovDate,1);
+    predLine=`
+      <div class="dg-sec"><div class="dg-h">Next period</div><div class="dg-line">${inDays<=0?"expected around":`in <b>${inDays}</b> day${inDays===1?"":"s"} —`} ${esc(fmt(s.nextStart))}</div></div>
+      <div class="dg-sec"><div class="dg-h">Fertile window</div><div class="dg-line">${esc(fmt(fStart))} – ${esc(fmt(fEnd))}</div></div>
+      <div class="dg-sec"><div class="dg-h">Ovulation (est.)</div><div class="dg-line">around ${esc(fmt(ovDate))}</div></div>`;
+  }
+  const cal = `<div class="cyc-cal">
+    <div class="cyc-nav"><button class="look-arrow" id="cycPrev" aria-label="previous month">‹</button>
+      <div class="cyc-month">${esc(monthLabel)}</div>
+      <button class="look-arrow" id="cycNext" aria-label="next month">›</button></div>
+    <div class="cyc-grid cyc-dow">${dow.map(d=>`<div class="cyc-dowc">${d}</div>`).join("")}</div>
+    <div class="cyc-grid">${cells.map(dk=>{
+      if(!dk) return `<div class="cyc-cell empty"></div>`;
+      const bleed=DATA.cycle.bleed[dk];
+      const cls=["cyc-cell"];
+      if(bleed) cls.push("bleed");
+      else if(s.predPeriod[dk]) cls.push("pred");
+      if(s.ov[dk]) cls.push("ov");
+      else if(s.fertile[dk]) cls.push("fert");
+      if(dk===today) cls.push("today");
+      if(DATA.cycle.days&&DATA.cycle.days[dk]&&(DATA.cycle.days[dk].symptoms||[]).length) cls.push("logged");
+      return `<button class="${cls.join(" ")}" data-cycday="${dk}">${+dk.slice(-2)}</button>`;
+    }).join("")}</div>
+    <div class="cyc-legend">
+      <span><i class="lg bleed"></i>Period</span>
+      <span><i class="lg pred"></i>Predicted</span>
+      <span><i class="lg fert"></i>Fertile</span>
+      <span><i class="lg ov"></i>Ovulation</span>
+    </div>
+  </div>`;
+  const hist = s.groups.length ? `<div class="card tint">
+      <h3>Your Cycles</h3>
+      <p class="sub">Average cycle: <b>${s.avgCycle} days</b> · Average period: <b>${s.avgPeriod} days</b>${s.starts.length<2?" (estimate until a couple of cycles are logged)":""}</p>
+      <ul class="hm-list">${s.groups.slice().reverse().slice(0,6).map((g,i,arr)=>{
+        return `<li><span class="hm-main">${esc(fmt(g.start))}${g.len>1?` – ${esc(fmt(g.end))}`:""}<br><span class="hm-sub">${g.len} day${g.len===1?"":"s"}</span></span></li>`;
+      }).join("")}</ul>
+    </div>` : "";
+  return `
+    ${pageHead("Your body", "Cycle", "A gentle way to know your rhythm — log your period, and Lumen quietly learns your pattern.", "blossom", "#C98A94")}
+
+    <div class="card tint cyc-hero">
+      <div class="cyc-day">${esc(statusTop)}</div>
+      ${statusSub?`<div class="cyc-phase">${esc(statusSub)}</div>`:""}
+      ${s.phaseNote?`<div class="cyc-note">${esc(s.phaseNote)}</div>`:""}
+      <button class="btn tiny ${todayBleed?'':'ghost'}" id="cycToday" style="margin-top:12px">${todayBleed?"✓ Period today":"Log today as a period day"}</button>
+    </div>
+
+    <div class="card tint">
+      <h3>Calendar</h3>
+      <p class="sub">Tap the days your period comes. Lumen fills in your predicted days, fertile window, and ovulation.</p>
+      ${cal}
+    </div>
+
+    ${s.nextStart?`<div class="card tint"><h3>What's Ahead</h3><div class="digest">${predLine}</div>
+      <p class="sub" style="margin-top:10px;font-size:12.5px">These are gentle estimates from your pattern — not medical or contraceptive advice.</p></div>`:""}
+
+    <div class="card tint">
+      <h3>How You Feel Today</h3>
+      <p class="sub">Tap anything you're noticing. Over time it becomes a picture you can share with your doctor.</p>
+      <div class="tap-grid" style="margin-top:8px">
+        ${CYC_SYMPTOMS.map(sy=>`<button class="tap-chip ${(dLog.symptoms||[]).includes(sy[0])?'on':''}" data-cycsym="${sy[0]}">${esc(sy[1])}</button>`).join("")}
+      </div>
+    </div>
+
+    ${hist}
+    ${footer()}
+  `;
+}
+
 /* ============================================================
    Health — body/pain, food, water, weight, appointments, results,
    plus body-care, exercises, and the gym. One home for the body.
@@ -3638,6 +3846,17 @@ function view_health(){
       <div class="dg-chips" style="margin-top:4px">${snap.length?snap.join(""):`<span class="sub" style="font-style:italic">Nothing logged yet today.</span>`}</div>
       <div class="row" style="margin-top:12px"><button class="btn tiny" onclick="go('today')">Log today's check-in →</button></div>
     </div>
+
+    ${(function(){ const s=cycleStats(); return `<div class="card tint cyc-summary" onclick="go('cycle')" style="cursor:pointer">
+      <div class="row" style="align-items:center;gap:12px">
+        <span>${icon('blossom',22,'#C98A94')}</span>
+        <div style="flex:1">
+          <h3 style="margin:0">Cycle</h3>
+          <p class="sub" style="margin:2px 0 0">${s.cycleDay!=null ? `Day ${s.cycleDay}${s.phase?` · ${s.phase}`:""}${s.nextStart?` · next period ${(function(){const n=daysBetween(todayKey(),s.nextStart);return n>0?`in ${n} day${n===1?"":"s"}`:"soon";})()}`:""}` : "Tap to start tracking your rhythm"}</p>
+        </div>
+        <span style="color:var(--accent)">›</span>
+      </div>
+    </div>`; })()}
 
     ${trendCard()}
 
@@ -4505,6 +4724,15 @@ function wire(){
     document.querySelectorAll("[data-wdel]").forEach(b=>b.addEventListener("click", ()=>deleteWeight(b.dataset.wdel)));
     document.querySelectorAll("[data-adel]").forEach(b=>b.addEventListener("click", ()=>deleteAppt(b.dataset.adel)));
     document.querySelectorAll("[data-hndel]").forEach(b=>b.addEventListener("click", ()=>deleteHealthNote(b.dataset.hndel)));
+  }
+
+  // Cycle tracker
+  if(current==="cycle"){
+    const ct=document.getElementById("cycToday"); if(ct) ct.addEventListener("click", ()=>toggleBleed(todayKey()));
+    const cp=document.getElementById("cycPrev"); if(cp) cp.addEventListener("click", ()=>{ const ym=_cycMonth||todayKey().slice(0,7); const [y,m]=ym.split("-").map(Number); const d=new Date(Date.UTC(y,m-2,1)); _cycMonth=d.getUTCFullYear()+"-"+String(d.getUTCMonth()+1).padStart(2,"0"); render(); });
+    const cn=document.getElementById("cycNext"); if(cn) cn.addEventListener("click", ()=>{ const ym=_cycMonth||todayKey().slice(0,7); const [y,m]=ym.split("-").map(Number); const d=new Date(Date.UTC(y,m,1)); _cycMonth=d.getUTCFullYear()+"-"+String(d.getUTCMonth()+1).padStart(2,"0"); render(); });
+    document.querySelectorAll("[data-cycday]").forEach(b=>b.addEventListener("click", ()=>toggleBleed(b.dataset.cycday)));
+    document.querySelectorAll("[data-cycsym]").forEach(b=>b.addEventListener("click", ()=>toggleCycSymptom(b.dataset.cycsym)));
   }
 
   // Reflect: Look Back date browser

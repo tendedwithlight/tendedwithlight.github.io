@@ -1593,6 +1593,7 @@ function view_today(){
   const C=238.76, pct=Math.min(done/6,1);
   const bodyScale = [["😣","Aching"],["😕","Tender"],["😌","Okay"],["🙂","Good"],["✨","Strong"]];
   const heartScale= [["🌧️","Heavy"],["🌥️","Low"],["⛅","Steady"],["🌤️","Light"],["☀️","Bright"]];
+  const sleepScale= [["😩","Restless"],["😪","Light"],["😌","Okay"],["🙂","Rested"],["🌙","Deep"]];
 
   return `
     ${pageHead(prettyDate(), `${g}, ${esc(CONFIG.ownerName)}.`, "", "sun", "#C9A15A")}
@@ -1616,6 +1617,14 @@ function view_today(){
       <div class="field-label">Your heart</div>
       <div class="scale" id="heartScale">
         ${heartScale.map((s,i)=>`<button data-k="heart" data-v="${i+1}" class="${ci.heart==i+1?'sel':''}"><span class="em">${s[0]}</span>${s[1]}</button>`).join("")}
+      </div>
+      <div class="field-label">How you slept</div>
+      <div class="scale" id="sleepScale">
+        ${sleepScale.map((s,i)=>`<button data-k="sleep" data-v="${i+1}" class="${ci.sleep==i+1?'sel':''}"><span class="em">${s[0]}</span>${s[1]}</button>`).join("")}
+      </div>
+      <div class="row" style="align-items:center;gap:8px;margin-top:8px">
+        <span class="field-label" style="margin:0">Hours <span style="font-weight:400;color:var(--ink-soft)">(optional)</span></span>
+        <input type="number" id="sleepHrs" inputmode="decimal" step="0.5" min="0" max="24" placeholder="e.g. 7" value="${ci.sleepHrs!=null?esc(String(ci.sleepHrs)):''}" style="flex:0 0 90px" />
       </div>
       <div class="field-label">Your back &amp; neck today</div>
       <input type="range" min="0" max="10" step="1" class="comfort" id="comfort" value="${comfort==null?5:comfort}" />
@@ -2150,6 +2159,7 @@ function doPrintJournal(){
 const ACTIVITIES = {
   recovery: [
     {n:"Physiological Sigh", w:"The fastest way to calm your body.", m:2, s:["Sit or lie back. Let your shoulders drop.","Breathe in through your nose — then sneak in a second little sip of air on top.","Now a long, slow exhale through your mouth. Empty all the way.","[breathe:5]","Feel your body settle. You can stop whenever you're ready."]},
+    {n:"Wind Down for Sleep", w:"A gentle glide into sleep.", m:6, ambient:true, s:["Get into bed, or somewhere you can rest. Dim the lights and let your eyes close — I'll guide you the whole way. Nothing to do now but listen and breathe.","Let the day be finished. Whatever is still undone can wait for morning. You're allowed to set it all down now.","We'll slow everything down with long, soft exhales. Just follow the circle.","[breathe:6]","Let your body grow heavy — your legs, your back, your shoulders, all sinking into the bed.","Now bring to mind one small good thing from today. Just hold it gently in your heart, and let yourself feel quietly thankful.","Soften your jaw, and the space between your eyebrows. Let your whole face grow still.","[verse]","Rest here in the quiet. Let each slow breath carry you a little deeper.","[timer:180|let sleep come when it's ready — there's nothing to do]","You are safe. You are held. You can let go now. Sleep well."]},
     {n:"Melt the Tension", w:"Release the tension you've been holding.", m:6, s:["Get comfortable, and if you'd like, close your eyes — I'll guide you with my voice the whole way. We'll gently tense each area, then rest in the release. Just listen and follow along.","[hold:7:15|Hands & arms — squeeze tight|Now let go. Feel them grow heavy and soft.|tense gently — never to the point of pain|notice the difference — that's tension leaving]","[hold:7:15|Shoulders & neck — lift them up toward your ears|Now drop them. Let them fall away.|tense gently — never to the point of pain|let them sink lower with each breath]","[hold:7:15|Face — scrunch it all up|Now release. Let it go smooth and soft.|tense gently — never to the point of pain|feel your whole face soften]","[hold:7:15|Belly & legs — tighten everything|Now release. Let it all go.|tense gently — never to the point of pain|let the heaviness spread through you]","Whole body loose now. Rest here a moment — you can feel the difference."]},
     {n:"Calm Breathing", w:"Shift into your body's rest mode.", m:3, s:["Get comfortable. Just follow the circle.","[breathe:6]","Well done. Carry this calm with you."]},
     {n:"Permission to Rest", w:"Rest is how you refill. You're allowed this.", m:10, s:["This is on purpose. Rest isn't lazy.","Set everything down. Lie back, or close your eyes.","[timer:600]","You rested on purpose today. That counts as care."]},
@@ -3288,6 +3298,7 @@ function trendCard(){
   const keys=Object.keys(DATA.checkins||{}).sort().slice(-14);
   const heart=keys.map(k=>DATA.checkins[k].heart).filter(v=>v);
   const body=keys.map(k=>DATA.checkins[k].body).filter(v=>v);
+  const sleep=keys.map(k=>DATA.checkins[k].sleep).filter(v=>v);
   if (keys.length < 3){
     return `<div class="card tint"><h3>How You've Been</h3>
       <p class="sub">After a few daily check-ins, a gentle picture of your body and heart shows up here — nice to notice, and easy to show your chiropractor.</p></div>`;
@@ -3298,6 +3309,7 @@ function trendCard(){
     <div class="spark-wrap">
       <div class="spark" style="color:var(--emotional)"><div class="lbl"><span>Heart</span><span>low → bright</span></div>${sparkline(heart)}</div>
       <div class="spark" style="color:var(--physical)"><div class="lbl"><span>Body</span><span>aching → strong</span></div>${sparkline(body)}</div>
+      ${sleep.length>=3?`<div class="spark" style="color:#8E7C93"><div class="lbl"><span>Sleep</span><span>restless → deep</span></div>${sparkline(sleep)}</div>`:""}
     </div>
   </div>`;
 }
@@ -3834,6 +3846,7 @@ function view_health(){
   const notes=(DATA.healthNotes||[]).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
   const snap=[];
   if(ci.body) snap.push(`<span class="dg-chip">Body: ${BODY[ci.body-1]}</span>`);
+  if(ci.sleep) snap.push(`<span class="dg-chip">Sleep: ${["Restless","Light","Okay","Rested","Deep"][ci.sleep-1]}${ci.sleepHrs?` · ${ci.sleepHrs}h`:""}</span>`);
   if(ci.comfort!=null) snap.push(`<span class="dg-chip">Back & neck: ${ci.comfort}/10</span>`);
   if(ci.water) snap.push(`<span class="dg-chip">💧 ${ci.water*16} oz</span>`);
   if(ci.nourish&&ci.nourish.length) snap.push(`<span class="dg-chip">🍎 ${ci.nourish.length} noted</span>`);
@@ -3958,7 +3971,7 @@ function dayDigest(dk){
   const books=(DATA.books||[]).filter(b=>((b.finished||b.date)===dk) && (b.title));
   const care=(ci.care||[]).map(k=> k.indexOf("c:")===0 ? ("✿ "+k.slice(2)) : (CARE_LABELS[k]||null)).filter(Boolean);
   const nourish=(ci.nourish||[]).map(k=> k.indexOf("n:")===0 ? ("✿ "+k.slice(2)) : (NOURISH_LABELS[k]||null)).filter(Boolean);
-  const hasCheck = ci.body||ci.heart||(ci.comfort!=null)||care.length||nourish.length||ci.water;
+  const hasCheck = ci.body||ci.heart||ci.sleep||(ci.comfort!=null)||care.length||nourish.length||ci.water;
   const anything = hasCheck || pages.length || wins.length || disc.length || kidNotes.length || kidMoments.length || books.length;
   if(!anything) return `<p class="empty" style="margin-top:6px">Nothing recorded on this day — and that's okay. The days you only rest still count.</p>`;
   let h='<div class="digest">';
@@ -3967,6 +3980,7 @@ function dayDigest(dk){
     if(ci.body) bits.push(`<span class="dg-chip">Body: ${BODY[ci.body-1]||""}</span>`);
     if(ci.heart) bits.push(`<span class="dg-chip">Heart: ${HEART[ci.heart-1]||""}</span>`);
     if(ci.comfort!=null) bits.push(`<span class="dg-chip">Back & neck: ${ci.comfort}/10</span>`);
+    if(ci.sleep) bits.push(`<span class="dg-chip">Sleep: ${["Restless","Light","Okay","Rested","Deep"][ci.sleep-1]}${ci.sleepHrs?` · ${ci.sleepHrs}h`:""}</span>`);
     if(ci.water) bits.push(`<span class="dg-chip">💧 ${ci.water*16} oz</span>`);
     care.forEach(c=>bits.push(`<span class="dg-chip">${esc(c)}</span>`));
     nourish.forEach(c=>bits.push(`<span class="dg-chip">${esc(c)}</span>`));
@@ -4160,6 +4174,14 @@ function wire(){
       saveData(DATA); buzz(); updateTodayRing();
     });
   }
+  // Today: sleep hours (optional)
+  const sleepHrs=document.getElementById("sleepHrs");
+  if(sleepHrs) sleepHrs.addEventListener("change", ()=>{
+    const day=todayKey(); DATA.checkins[day]=DATA.checkins[day]||{};
+    const v=parseFloat(sleepHrs.value);
+    if(v>=0 && v<=24) DATA.checkins[day].sleepHrs=v; else delete DATA.checkins[day].sleepHrs;
+    saveData(DATA);
+  });
   // Today: care chips (multi-select, one tap, auto-save)
   document.querySelectorAll("#careGrid .tap-chip").forEach(c=>{
     if(c.id==="careAddBtn") return;

@@ -1244,7 +1244,8 @@ const DRAFT_SKIP = { ventNew:1, ventTry:1, cloudEmail:1, ltDate:1, comfort:1,
                      importFile:1, search:1,
                      bkTitle:1, bkAuthor:1, bkGist:1, bkReview:1, bkSpoil:1, bkQuote:1, bkRec:1,
                      wtrInput:1, childNoteInput:1,
-                     aWho:1, hnTitle:1, hnText:1, wVal:1 };
+                     aWho:1, hnTitle:1, hnText:1, wVal:1,
+                     studyFocus:1, studyNotes:1 };
 function clearDraft(id){
   if(DATA.drafts && DATA.drafts[id]!==undefined){ delete DATA.drafts[id]; saveData(DATA); }
 }
@@ -1381,6 +1382,7 @@ DATA.workouts  = DATA.workouts  || [];   // [{id, name, exercises:[{id,name,deta
 DATA.workoutLog= DATA.workoutLog|| [];   // [{id, date, name, note}]
 DATA.studyBlock= DATA.studyBlock|| {ref:"", url:""};   // this week's Come Follow Me block
 DATA.studyLog  = DATA.studyLog  || [];   // [{id, date, text}] one insight a day
+DATA.studies   = DATA.studies   || [];   // [{id, date, focus, notes}] — spiritual study sessions (what she's studying + her thoughts)
 DATA.gallery   = DATA.gallery   || [];   // [{id, img, title, date}] her own artwork
 DATA.missionWhy= DATA.missionWhy|| "";   // her "why" for 4ABT
 DATA.missionNotes = DATA.missionNotes || []; // [strings] ideas/prayers/people for 4ABT
@@ -2259,6 +2261,20 @@ function spiritualExtra(){
     : "https://www.churchofjesuschrist.org/study/come-follow-me?lang=eng";
   const insights = DATA.studyLog.slice().sort((a,b)=> b.date.localeCompare(a.date)).slice(0,7);
   return `
+    <div class="card tint">
+      <h3>My Study</h3>
+      <p class="sub">Your study space — what you're studying today, and what it teaches you. Every session is kept below.</p>
+      <div class="field-label">What I'm studying today</div>
+      <input type="text" id="studyFocus" placeholder="A scripture, a quote, a chapter, a conference talk…" />
+      <div class="field-label">My thoughts & notes</div>
+      <textarea id="studyNotes" placeholder="Impressions, insights, what stood out, what to carry with you…"></textarea>
+      <div class="row" style="margin-top:10px"><button class="btn tiny" id="studySave">Save study</button>
+        <span class="saved-note" id="studySaved">Saved ✓</span></div>
+      ${(DATA.studies||[]).length ? `<div class="study-list" style="margin-top:12px">${DATA.studies.slice().sort((a,b)=>(b.date||"").localeCompare(a.date||"")).map(st=>`
+        <div class="entry"><div class="meta"><span>${esc(fmt(st.date))}${st.focus?` · <b>${esc(st.focus)}</b>`:""}</span>
+          <button class="x" data-studydel="${st.id}" style="margin-left:auto;border:0;background:transparent;cursor:pointer;color:var(--ink-soft)">✕</button></div>
+          ${st.notes?`<div class="body">${esc(st.notes)}</div>`:""}</div>`).join("")}</div>` : ""}
+    </div>
     <div class="card tint">
       <h3>Pondering</h3>
       <p class="sub">A quiet, guided way to let scripture sink past your eyes and into your heart — read, breathe, sit with it, and carry one line with you.</p>
@@ -3966,13 +3982,14 @@ function dayDigest(dk){
   const pages=(DATA.pages||[]).filter(p=>p.date===dk);
   const wins=(DATA.wins||[]).filter(w=>w.date===dk);
   const disc=(DATA.discoveries||[]).filter(d=>d.date===dk);
+  const studies=(DATA.studies||[]).filter(x=>x.date===dk);
   const kidNotes=[]; (DATA.children||[]).forEach(c=>(c.notes||[]).forEach(n=>{ if(n.date===dk) kidNotes.push({name:c.name,text:n.text}); }));
   const kidMoments=[]; (DATA.children||[]).forEach(c=>(c.moments||[]).forEach(m=>{ if(m.date===dk) kidMoments.push({name:c.name,id:m.id,caption:m.caption}); }));
   const books=(DATA.books||[]).filter(b=>((b.finished||b.date)===dk) && (b.title));
   const care=(ci.care||[]).map(k=> k.indexOf("c:")===0 ? ("✿ "+k.slice(2)) : (CARE_LABELS[k]||null)).filter(Boolean);
   const nourish=(ci.nourish||[]).map(k=> k.indexOf("n:")===0 ? ("✿ "+k.slice(2)) : (NOURISH_LABELS[k]||null)).filter(Boolean);
   const hasCheck = ci.body||ci.heart||ci.sleep||(ci.comfort!=null)||care.length||nourish.length||ci.water;
-  const anything = hasCheck || pages.length || wins.length || disc.length || kidNotes.length || kidMoments.length || books.length;
+  const anything = hasCheck || pages.length || wins.length || disc.length || studies.length || kidNotes.length || kidMoments.length || books.length;
   if(!anything) return `<p class="empty" style="margin-top:6px">Nothing recorded on this day — and that's okay. The days you only rest still count.</p>`;
   let h='<div class="digest">';
   if(hasCheck){
@@ -3989,6 +4006,7 @@ function dayDigest(dk){
   if(pages.length){ h+=`<div class="dg-sec"><div class="dg-h">Journal</div>${pages.map(p=>`${p.img?`<div class="art-frame" style="margin:6px 0"><img src="${p.img}" style="max-height:200px"/></div>`:""}${p.text?`<div class="entry"><div class="body">${esc(p.text)}</div></div>`:""}`).join("")}</div>`; }
   if(wins.length){ h+=`<div class="dg-sec"><div class="dg-h">Wins</div>${wins.map(w=>`<div class="dg-line">✦ ${esc(w.text||"")}</div>`).join("")}</div>`; }
   if(disc.length){ h+=`<div class="dg-sec"><div class="dg-h">What you discovered</div>${disc.map(d=>`<div class="entry"><div class="whisper" style="font-size:14px">${esc(d.q||"")}</div><div class="body">${esc(d.a||"")}</div></div>`).join("")}</div>`; }
+  if(studies.length){ h+=`<div class="dg-sec"><div class="dg-h">Spiritual study</div>${studies.map(st=>`<div class="entry"><div class="whisper" style="font-size:14px">${esc(st.focus||"")}</div>${st.notes?`<div class="body">${esc(st.notes)}</div>`:""}</div>`).join("")}</div>`; }
   if(kidNotes.length){ h+=`<div class="dg-sec"><div class="dg-h">For the children</div>${kidNotes.map(n=>`<div class="dg-line"><b>${esc(n.name)}:</b> ${esc(n.text)}</div>`).join("")}</div>`; }
   if(kidMoments.length){ h+=`<div class="dg-sec"><div class="dg-h">Moments</div><div class="moments-grid">${kidMoments.map(m=>`<div class="moment"><div class="moment-img"><img data-photo-id="${esc(m.id)}" alt="a moment"/></div>${m.caption?`<div class="moment-date">${esc(m.caption)}</div>`:""}<div class="moment-date">${esc(m.name)}</div></div>`).join("")}</div></div>`; }
   if(books.length){ h+=`<div class="dg-sec"><div class="dg-h">Books</div>${books.map(b=>`<div class="dg-line">📖 ${esc(b.title)}${b.author?(" — "+esc(b.author)):""}</div>`).join("")}</div>`; }
@@ -3996,6 +4014,14 @@ function dayDigest(dk){
   return h;
 }
 
+function addStudy(){
+  const f=document.getElementById("studyFocus"), n=document.getElementById("studyNotes");
+  const focus=(f&&f.value.trim())||"", notes=(n&&n.value.trim())||"";
+  if(!focus && !notes) return;
+  DATA.studies=DATA.studies||[]; DATA.studies.push({id:uid(),date:todayKey(),focus,notes});
+  saveData(DATA); buzz(); celebrate("Kept ✦"); render();
+}
+function deleteStudy(id){ DATA.studies=(DATA.studies||[]).filter(x=>x.id!==id); saveData(DATA); render(); }
 function view_reflect(){
   const pages = (DATA.pages||[]).slice().sort((a,b)=> (b.date||"").localeCompare(a.date||""));
   const otd = onThisDay();
@@ -4763,6 +4789,12 @@ function wire(){
     if(ld) ld.addEventListener("change", ()=>{ if(ld.value){ _lookDate=ld.value; render(); } });
     const lp=document.getElementById("lookPrev"); if(lp) lp.addEventListener("click", ()=>{ _lookDate=shiftDateKey(_lookDate||todayKey(), -1); render(); });
     const ln=document.getElementById("lookNext"); if(ln) ln.addEventListener("click", ()=>{ const cur=_lookDate||todayKey(); if(cur>=todayKey()) return; _lookDate=shiftDateKey(cur, 1); render(); });
+  }
+
+  // Spiritual pillar: My Study
+  {
+    const ss=document.getElementById("studySave"); if(ss) ss.addEventListener("click", addStudy);
+    document.querySelectorAll("[data-studydel]").forEach(b=>b.addEventListener("click", ()=>deleteStudy(b.dataset.studydel)));
   }
 
   hydratePhotos();

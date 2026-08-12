@@ -3056,7 +3056,28 @@ function addLesson(){ const l={id:uid(),date:todayKey(),title:"",ages:"",body:""
 function openLesson(id){ _lessonOpen=id; go("lessons"); }
 function closeLesson(){ const l=currentLesson(); if(l && !l.title && !l.ages && !l.body && !l.howItWent && !l.kidsSaid && !l.fileId){ DATA.lessons=DATA.lessons.filter(x=>x.id!==l.id); saveData(DATA); } _lessonOpen=null; go("lessons"); }
 function deleteLesson(){ const l=currentLesson(); if(!l) return; if(l.fileId) idbDel(l.fileId); DATA.lessons=DATA.lessons.filter(x=>x.id!==l.id); saveData(DATA); _lessonOpen=null; go("lessons"); celebrate(""); }
-function openLessonFile(fileId, fileName){ idbGet(fileId).then(d=>{ if(!d) return; try{ const a=document.createElement("a"); a.href=d; a.download=fileName||"lesson"; document.body.appendChild(a); a.click(); a.remove(); }catch(e){} }).catch(()=>{}); }
+function dataURLtoBlob(d){
+  const comma=d.indexOf(","); const head=d.slice(0,comma); const body=d.slice(comma+1);
+  const mime=(head.match(/:(.*?);/)||[])[1] || "application/octet-stream";
+  const isB64=/;base64/i.test(head);
+  let bytes;
+  if(isB64){ const bin=atob(body); let n=bin.length; const u8=new Uint8Array(n); while(n--) u8[n]=bin.charCodeAt(n); bytes=u8; }
+  else { bytes=new TextEncoder().encode(decodeURIComponent(body)); }
+  return new Blob([bytes], {type:mime});
+}
+function openLessonFile(fileId, fileName){
+  idbGet(fileId).then(d=>{
+    if(!d) return;
+    try{
+      const blob=dataURLtoBlob(d);
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");
+      a.href=url; a.download=fileName||"lesson"; a.rel="noopener"; a.target="_blank";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(()=>{ try{ URL.revokeObjectURL(url); }catch(_){} }, 15000);
+    }catch(e){ try{ window.open(d,"_blank"); }catch(_){} }
+  }).catch(()=>{});
+}
 
 function view_lessons(){
   if(_lessonOpen){ const l=lessonById(_lessonOpen); if(l) return view_lessonEdit(l); _lessonOpen=null; }
@@ -3095,8 +3116,8 @@ function view_lessonEdit(l){
       <p class="sub">Write it here, and/or attach a photo or file of it.</p>
       <textarea id="lsBody" placeholder="The lesson itself — what you'll teach, the story, the activity, the scripture…">${esc(l.body||"")}</textarea>
       <div class="row" style="margin-top:10px;align-items:center;gap:10px;flex-wrap:wrap">
-        <label class="btn ghost tiny" for="lsFile" style="cursor:pointer">${icon('frame',15)} Attach photo / file</label>
-        <input type="file" id="lsFile" accept="image/*,application/pdf,.doc,.docx,.txt,.pages" style="display:none" />
+        <label class="btn ghost tiny" for="lsFile" style="cursor:pointer">${icon('frame',15)} Attach photo / doc</label>
+        <input type="file" id="lsFile" accept="image/*,application/pdf,.pdf,.doc,.docx,.txt,.rtf,.pages,.ppt,.pptx,.key,.xls,.xlsx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation" style="display:none" />
         ${l.fileId?`<span class="sub" style="margin:0">📎 ${esc(l.fileName||"attached")}</span>
           <button class="btn tiny ghost" id="lsFileOpen">Open</button>
           <button class="hm-x" id="lsFileDel" aria-label="remove file">✕</button>`:""}
@@ -4844,8 +4865,12 @@ function wire(){
       bind("lsTitle","title"); bind("lsAges","ages"); bind("lsBody","body"); bind("lsWent","howItWent"); bind("lsKids","kidsSaid");
       const ld=document.getElementById("lsDate"); if(ld) ld.addEventListener("change", ()=>{ if(ld.value){ l.date=ld.value; saveData(DATA); } });
       const lf=document.getElementById("lsFile"); if(lf) lf.addEventListener("change", ()=>{ const f=lf.files&&lf.files[0]; if(!f) return;
-        const done=(dataURL)=>{ const fid=uid(); idbPut(fid,dataURL).catch(()=>{}).then(()=>{ if(l.fileId) idbDel(l.fileId); l.fileId=fid; l.fileName=f.name; l.fileType=f.type||""; saveData(DATA); buzz(); render(); }); };
-        if(f.type && f.type.indexOf("image/")===0) readAndCompress(f, done, 1600); else readFileAsDataURL(f, done);
+        if(f.size > 30*1024*1024){ celebrate("That file's over 30 MB — try a smaller version so it saves smoothly."); lf.value=""; return; }
+        const isImg = f.type && f.type.indexOf("image/")===0;
+        const done=(dataURL)=>{ const fid=uid();
+          idbPut(fid,dataURL).then(()=>{ if(l.fileId) idbDel(l.fileId); l.fileId=fid; l.fileName=f.name; l.fileType=f.type||""; saveData(DATA); buzz(); celebrate("Attached ✦"); render(); })
+            .catch(()=>{ celebrate("Couldn't save that file — it may be too large."); }); };
+        if(isImg) readAndCompress(f, done, 1600); else readFileAsDataURL(f, done);
       });
       const lo=document.getElementById("lsFileOpen"); if(lo) lo.addEventListener("click", ()=>openLessonFile(l.fileId, l.fileName));
       const lfd=document.getElementById("lsFileDel"); if(lfd) lfd.addEventListener("click", ()=>{ if(l.fileId) idbDel(l.fileId); l.fileId=""; l.fileName=""; l.fileType=""; saveData(DATA); render(); });

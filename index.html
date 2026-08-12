@@ -1245,7 +1245,8 @@ const DRAFT_SKIP = { ventNew:1, ventTry:1, cloudEmail:1, ltDate:1, comfort:1,
                      bkTitle:1, bkAuthor:1, bkGist:1, bkReview:1, bkSpoil:1, bkQuote:1, bkRec:1,
                      wtrInput:1, childNoteInput:1,
                      aWho:1, hnTitle:1, hnText:1, wVal:1,
-                     studyFocus:1, studyNotes:1 };
+                     studyFocus:1, studyNotes:1,
+                     lsTitle:1, lsAges:1, lsBody:1, lsWent:1, lsKids:1 };
 function clearDraft(id){
   if(DATA.drafts && DATA.drafts[id]!==undefined){ delete DATA.drafts[id]; saveData(DATA); }
 }
@@ -1413,6 +1414,8 @@ DATA.children = DATA.children || [
   { id:"lily",  name:"Lily",  photo:"", notes:[], moments:[] }
 ];
 DATA.children.forEach(c=>{ c.notes=c.notes||[]; c.moments=c.moments||[]; });
+// Lessons she creates for her kids — [{id,date,title,ages,body,howItWent,kidsSaid,fileId,fileName,fileType}] (file in IndexedDB)
+DATA.lessons = DATA.lessons || [];
 // Health trackers
 DATA.weightLog = DATA.weightLog || [];       // [{id, date, value, unit}]
 DATA.appointments = DATA.appointments || []; // [{id, date, kind, who, note}]
@@ -1495,6 +1498,7 @@ let _ywMonth = null; // Year Woven: selected month "YYYY-MM" (null = current)
 let _bookOpen = null; // Bookshelf: id of the book being viewed/edited (null = shelf)
 let _wtrResults = []; // Want-to-Read: latest live search results
 let _childOpen = null; // Family: id of the child page being viewed (null = family hub)
+let _lessonOpen = null; // Family: id of the lesson being viewed/edited (null = lessons list)
 let _lookDate = null;  // Reflect: the date selected in Look Back (YYYY-MM-DD)
 let _cycMonth = null;  // Cycle: the month shown on the calendar (YYYY-MM; null = current)
 
@@ -1513,13 +1517,13 @@ const ACCENTS = {
   recovery:"#8E7C93", emotional:"#C98A94", spiritual:"#C9A15A", physical:"#7E9B7A", intellectual:"#C97B63",
   gym:"#A87E96", exercises:"#7E9B7A", journal:"#C9A15A", week:"#C9A15A", priorities:"#8E7C93", rhythms:"#C98A94",
   yearwoven:"#B98BA4", family:"#D69B7A", mission:"#D9A24E", gallery:"#B98BA4", backup:"#9A8FA2",
-  books:"#C97B63", child:"#D69B7A", health:"#5E9B8E", more:"#8E7C93", cycle:"#C98A94"
+  books:"#C97B63", child:"#D69B7A", health:"#5E9B8E", more:"#8E7C93", cycle:"#C98A94", lessons:"#D69B7A"
 };
 const PARENT = {
   recovery:"care", emotional:"care", spiritual:"care", intellectual:"care",
   physical:"health", gym:"health", exercises:"health", cycle:"health",
   journal:"reflect", week:"reflect", priorities:"reflect", rhythms:"reflect",
-  letters:"reflect", yearwoven:"reflect", child:"family",
+  letters:"reflect", yearwoven:"reflect", child:"family", lessons:"family",
   gallery:"more", vent:"more", backup:"more"
 };
 
@@ -3041,6 +3045,81 @@ function view_child(id){
   `;
 }
 
+/* ============================================================
+   Lessons for My Babies — lessons she creates for her kids.
+   Text fields sync to cloud; attached files live in IndexedDB.
+   ============================================================ */
+function readFileAsDataURL(file, cb){ const r=new FileReader(); r.onload=()=>cb(r.result); r.readAsDataURL(file); }
+function lessonById(id){ return (DATA.lessons||[]).find(l=>l.id===id); }
+function currentLesson(){ return lessonById(_lessonOpen); }
+function addLesson(){ const l={id:uid(),date:todayKey(),title:"",ages:"",body:"",howItWent:"",kidsSaid:"",fileId:"",fileName:"",fileType:""}; DATA.lessons=DATA.lessons||[]; DATA.lessons.push(l); saveData(DATA); _lessonOpen=l.id; buzz(); go("lessons"); }
+function openLesson(id){ _lessonOpen=id; go("lessons"); }
+function closeLesson(){ const l=currentLesson(); if(l && !l.title && !l.ages && !l.body && !l.howItWent && !l.kidsSaid && !l.fileId){ DATA.lessons=DATA.lessons.filter(x=>x.id!==l.id); saveData(DATA); } _lessonOpen=null; go("lessons"); }
+function deleteLesson(){ const l=currentLesson(); if(!l) return; if(l.fileId) idbDel(l.fileId); DATA.lessons=DATA.lessons.filter(x=>x.id!==l.id); saveData(DATA); _lessonOpen=null; go("lessons"); celebrate(""); }
+function openLessonFile(fileId, fileName){ idbGet(fileId).then(d=>{ if(!d) return; try{ const a=document.createElement("a"); a.href=d; a.download=fileName||"lesson"; document.body.appendChild(a); a.click(); a.remove(); }catch(e){} }).catch(()=>{}); }
+
+function view_lessons(){
+  if(_lessonOpen){ const l=lessonById(_lessonOpen); if(l) return view_lessonEdit(l); _lessonOpen=null; }
+  const lessons=(DATA.lessons||[]).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  return `
+    <button class="backchip" onclick="go('family')">‹ Family</button>
+    ${pageHead("Her Mission", "Lessons for My Babies", "The lessons you make for them — kept, and remembered, with how each one went.", "book", "#D69B7A")}
+    <div class="row" style="margin-bottom:10px"><button class="btn tiny" onclick="addLesson()">＋ New lesson</button></div>
+    ${lessons.length ? lessons.map(l=>`
+      <button class="card tint lesson-item" onclick="openLesson('${l.id}')" style="display:block;width:100%;text-align:left;border:0;cursor:pointer;font-family:inherit;color:inherit">
+        <h3 style="margin:0">${esc(l.title||"Untitled lesson")}</h3>
+        <p class="sub" style="margin:4px 0 0">${l.ages?`Ages ${esc(l.ages)} · `:""}${esc(fmt(l.date))}${l.fileId?" · 📎":""}</p>
+        ${l.body?`<p class="sub" style="margin:8px 0 0;color:var(--ink)">${esc(l.body.slice(0,120))}${l.body.length>120?"…":""}</p>`:""}
+      </button>`).join("")
+      : `<p class="empty">No lessons yet — tap “＋ New lesson” to add your first.</p>`}
+    ${footer()}
+  `;
+}
+function view_lessonEdit(l){
+  const isImg = l.fileType && l.fileType.indexOf("image/")===0;
+  return `
+    <button class="backchip" onclick="closeLesson()">‹ Lessons</button>
+    ${pageHead("A Lesson", esc(l.title||"New lesson"), "", "book", "#D69B7A")}
+    <div class="card tint">
+      <div class="field-label">Title</div>
+      <input type="text" id="lsTitle" placeholder="What's this lesson called?" value="${esc(l.title||"")}" />
+      <div class="row" style="gap:10px;align-items:flex-start">
+        <div style="flex:1"><div class="field-label">Good for ages</div>
+          <input type="text" id="lsAges" placeholder="e.g. 3–5, or all ages" value="${esc(l.ages||"")}" /></div>
+        <div style="flex:0 0 150px"><div class="field-label">Date</div>
+          <input type="date" id="lsDate" value="${esc(l.date||todayKey())}" /></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>The Lesson</h3>
+      <p class="sub">Write it here, and/or attach a photo or file of it.</p>
+      <textarea id="lsBody" placeholder="The lesson itself — what you'll teach, the story, the activity, the scripture…">${esc(l.body||"")}</textarea>
+      <div class="row" style="margin-top:10px;align-items:center;gap:10px;flex-wrap:wrap">
+        <label class="btn ghost tiny" for="lsFile" style="cursor:pointer">${icon('frame',15)} Attach photo / file</label>
+        <input type="file" id="lsFile" accept="image/*,application/pdf,.doc,.docx,.txt,.pages" style="display:none" />
+        ${l.fileId?`<span class="sub" style="margin:0">📎 ${esc(l.fileName||"attached")}</span>
+          <button class="btn tiny ghost" id="lsFileOpen">Open</button>
+          <button class="hm-x" id="lsFileDel" aria-label="remove file">✕</button>`:""}
+      </div>
+      ${l.fileId&&isImg?`<div class="art-frame" style="margin-top:12px"><img data-photo-id="${esc(l.fileId)}" alt="lesson attachment" style="width:100%;border-radius:12px" /></div>`:""}
+    </div>
+    <div class="card tint">
+      <h3>How It Went</h3>
+      <p class="sub">A little reflection after you do it together — for next time.</p>
+      <div class="field-label">How the lesson went</div>
+      <textarea id="lsWent" placeholder="What worked, what you'd change, how they responded…">${esc(l.howItWent||"")}</textarea>
+      <div class="field-label">What my kids said</div>
+      <textarea id="lsKids" placeholder="Their comments, questions, the funny things they said…">${esc(l.kidsSaid||"")}</textarea>
+    </div>
+    <div class="book-saverow">
+      <button class="btn" id="lsSave">Save</button>
+      <span class="saved-note" id="lsSaved">Saved ✓</span>
+      <button class="btn tiny" id="lsDelete" style="margin-left:auto;background:transparent;color:var(--ink-soft);border:1px solid var(--line)">Delete lesson</button>
+    </div>
+    ${footer()}
+  `;
+}
+
 function view_family(){
   const fam = DATA.familyNote || "";
   return `
@@ -3061,6 +3140,17 @@ function view_family(){
           <div class="child-avatar"><img src="${esc(childPhoto(c))}" alt="${esc(c.name)}" loading="lazy" /></div>
           <span class="child-chip-name">${esc(c.name)}</span>
         </button>`).join("")}
+      </div>
+    </div>
+
+    <div class="card tint lessons-card" onclick="go('lessons')" style="cursor:pointer">
+      <div class="row" style="align-items:center;gap:12px">
+        <span>${icon('book',22,'#D69B7A')}</span>
+        <div style="flex:1">
+          <h3 style="margin:0">Lessons for My Babies</h3>
+          <p class="sub" style="margin:2px 0 0">${(DATA.lessons||[]).length ? `${DATA.lessons.length} lesson${DATA.lessons.length===1?"":"s"} kept — tap to open` : "The lessons you make for them, kept in one place"}</p>
+        </div>
+        <span style="color:var(--accent)">›</span>
       </div>
     </div>
 
@@ -3612,6 +3702,7 @@ function render(){
   else if (current==="mission") html = view_mission();
   else if (current==="books") html = view_books();
   else if (current==="child") html = view_child(_childOpen);
+  else if (current==="lessons") html = view_lessons();
   else if (current==="health") html = view_health();
   else if (current==="cycle") html = view_cycle();
   else if (current==="week") html = view_week();
@@ -3986,10 +4077,11 @@ function dayDigest(dk){
   const kidNotes=[]; (DATA.children||[]).forEach(c=>(c.notes||[]).forEach(n=>{ if(n.date===dk) kidNotes.push({name:c.name,text:n.text}); }));
   const kidMoments=[]; (DATA.children||[]).forEach(c=>(c.moments||[]).forEach(m=>{ if(m.date===dk) kidMoments.push({name:c.name,id:m.id,caption:m.caption}); }));
   const books=(DATA.books||[]).filter(b=>((b.finished||b.date)===dk) && (b.title));
+  const lessons=(DATA.lessons||[]).filter(l=>l.date===dk && (l.title||l.body));
   const care=(ci.care||[]).map(k=> k.indexOf("c:")===0 ? ("✿ "+k.slice(2)) : (CARE_LABELS[k]||null)).filter(Boolean);
   const nourish=(ci.nourish||[]).map(k=> k.indexOf("n:")===0 ? ("✿ "+k.slice(2)) : (NOURISH_LABELS[k]||null)).filter(Boolean);
   const hasCheck = ci.body||ci.heart||ci.sleep||(ci.comfort!=null)||care.length||nourish.length||ci.water;
-  const anything = hasCheck || pages.length || wins.length || disc.length || studies.length || kidNotes.length || kidMoments.length || books.length;
+  const anything = hasCheck || pages.length || wins.length || disc.length || studies.length || kidNotes.length || kidMoments.length || books.length || lessons.length;
   if(!anything) return `<p class="empty" style="margin-top:6px">Nothing recorded on this day — and that's okay. The days you only rest still count.</p>`;
   let h='<div class="digest">';
   if(hasCheck){
@@ -4010,6 +4102,7 @@ function dayDigest(dk){
   if(kidNotes.length){ h+=`<div class="dg-sec"><div class="dg-h">For the children</div>${kidNotes.map(n=>`<div class="dg-line"><b>${esc(n.name)}:</b> ${esc(n.text)}</div>`).join("")}</div>`; }
   if(kidMoments.length){ h+=`<div class="dg-sec"><div class="dg-h">Moments</div><div class="moments-grid">${kidMoments.map(m=>`<div class="moment"><div class="moment-img"><img data-photo-id="${esc(m.id)}" alt="a moment"/></div>${m.caption?`<div class="moment-date">${esc(m.caption)}</div>`:""}<div class="moment-date">${esc(m.name)}</div></div>`).join("")}</div></div>`; }
   if(books.length){ h+=`<div class="dg-sec"><div class="dg-h">Books</div>${books.map(b=>`<div class="dg-line">📖 ${esc(b.title)}${b.author?(" — "+esc(b.author)):""}</div>`).join("")}</div>`; }
+  if(lessons.length){ h+=`<div class="dg-sec"><div class="dg-h">Lessons</div>${lessons.map(l=>`<div class="dg-line">✎ ${esc(l.title||"Lesson")}${l.ages?` · ages ${esc(l.ages)}`:""}</div>`).join("")}</div>`; }
   h+='</div>';
   return h;
 }
@@ -4740,6 +4833,24 @@ function wire(){
       const dl=document.getElementById("bkDelete"); if(dl) dl.addEventListener("click", ()=>{
         if(confirm("Remove this book from your shelf? This can't be undone.")) deleteBook();
       });
+    }
+  }
+
+  // Family: lesson editor
+  if(current==="lessons" && _lessonOpen){
+    const l=currentLesson();
+    if(l){
+      const bind=(id,key)=>{ const el=document.getElementById(id); if(el) el.addEventListener("input", ()=>{ l[key]=el.value; saveData(DATA); }); };
+      bind("lsTitle","title"); bind("lsAges","ages"); bind("lsBody","body"); bind("lsWent","howItWent"); bind("lsKids","kidsSaid");
+      const ld=document.getElementById("lsDate"); if(ld) ld.addEventListener("change", ()=>{ if(ld.value){ l.date=ld.value; saveData(DATA); } });
+      const lf=document.getElementById("lsFile"); if(lf) lf.addEventListener("change", ()=>{ const f=lf.files&&lf.files[0]; if(!f) return;
+        const done=(dataURL)=>{ const fid=uid(); idbPut(fid,dataURL).catch(()=>{}).then(()=>{ if(l.fileId) idbDel(l.fileId); l.fileId=fid; l.fileName=f.name; l.fileType=f.type||""; saveData(DATA); buzz(); render(); }); };
+        if(f.type && f.type.indexOf("image/")===0) readAndCompress(f, done, 1600); else readFileAsDataURL(f, done);
+      });
+      const lo=document.getElementById("lsFileOpen"); if(lo) lo.addEventListener("click", ()=>openLessonFile(l.fileId, l.fileName));
+      const lfd=document.getElementById("lsFileDel"); if(lfd) lfd.addEventListener("click", ()=>{ if(l.fileId) idbDel(l.fileId); l.fileId=""; l.fileName=""; l.fileType=""; saveData(DATA); render(); });
+      const lsv=document.getElementById("lsSave"); if(lsv) lsv.addEventListener("click", ()=>{ saveData(DATA); buzz(); const s=document.getElementById("lsSaved"); if(s){ s.classList.add("show"); setTimeout(()=>s.classList.remove("show"),1400); } });
+      const ldl=document.getElementById("lsDelete"); if(ldl) ldl.addEventListener("click", ()=>{ if(confirm("Delete this lesson? Its attached file will be removed too.")) deleteLesson(); });
     }
   }
 

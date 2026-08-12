@@ -1977,6 +1977,9 @@ function renderActivityStep(){
   } else if(raw && raw.indexOf("[breathe")===0){ kind="breathe";
     const mm=raw.match(/\[breathe:(\d+)\]/); breatheCycles=mm?parseInt(mm[1]):4;
     inner=`<div class="breathe"><div class="breathe-stage on"><span class="breathe-ring r1"></span><span class="breathe-ring r2"></span><span class="breathe-ring r3"></span><svg class="breathe-prog" viewBox="0 0 200 200" aria-hidden="true"><defs><linearGradient id="actvBreatheGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C98A94"/><stop offset="0.5" stop-color="#C9A15A"/><stop offset="1" stop-color="#7E9B7A"/></linearGradient></defs><circle class="track" cx="100" cy="100" r="92"/><circle class="prog" id="actvProg" cx="100" cy="100" r="92" style="stroke:url(#actvBreatheGrad)"/></svg><div class="breathe-orb running" id="actvOrb"><span id="actvOrbL">Breathe in</span></div></div><div class="breathe-hint" id="actvBreatheHint">Breathe along with the circle</div></div>`;
+  } else if(raw && raw.indexOf("[sigh")===0){ kind="sigh";
+    const mm=raw.match(/\[sigh:(\d+)\]/); breatheCycles=mm?parseInt(mm[1]):5;
+    inner=`<div class="breathe"><div class="breathe-stage on"><span class="breathe-ring r1"></span><span class="breathe-ring r2"></span><span class="breathe-ring r3"></span><svg class="breathe-prog" viewBox="0 0 200 200" aria-hidden="true"><defs><linearGradient id="actvSighGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C98A94"/><stop offset="0.5" stop-color="#C9A15A"/><stop offset="1" stop-color="#7E9B7A"/></linearGradient></defs><circle class="track" cx="100" cy="100" r="92"/><circle class="prog" id="actvProg" cx="100" cy="100" r="92" style="stroke:url(#actvSighGrad); stroke-dashoffset:578"/></svg><div class="breathe-orb running" id="actvOrb"><span id="actvOrbL">Breathe in</span></div></div><div class="breathe-hint" id="actvBreatheHint">Two breaths in through your nose — one long breath out</div></div>`;
   } else if(raw && raw.indexOf("[timer:")===0){ kind="timer";
     const tb=raw.slice(7,-1).split("|"); timerSecs=parseInt(tb[0])||60; const timerHint=(tb[1]!==undefined&&tb[1]!=="")?tb[1]:"just rest here — it moves on for you";
     inner=`<div class="breathe"><div class="breathe-stage on"><span class="breathe-ring r1"></span><span class="breathe-ring r2"></span><span class="breathe-ring r3"></span><svg class="breathe-prog" viewBox="0 0 200 200" aria-hidden="true"><defs><linearGradient id="actvTimerGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#C98A94"/><stop offset="0.5" stop-color="#C9A15A"/><stop offset="1" stop-color="#7E9B7A"/></linearGradient></defs><circle class="track" cx="100" cy="100" r="92"/><circle class="prog" id="actvTimerProg" cx="100" cy="100" r="92" style="stroke:url(#actvTimerGrad); stroke-dashoffset:0"/></svg><div class="breathe-orb timer-orb running" id="actvTimerOrb"><span id="actvTimer">${fmtSecs(timerSecs)}</span></div></div><div class="breathe-hint" id="actvTimerHint">${esc(timerHint)}</div></div>`;
@@ -2028,8 +2031,9 @@ function renderActivityStep(){
   if(sb) sb.addEventListener("click", ()=>{ actvAdvance(); });
   if(paused) return; // stay frozen until resumed
   // soothing alpha-wave sound bed: under rest activities, and during every timer, breathing, and hold
-  if(a.ambient===true || kind==="timer" || kind==="breathe" || kind==="hold") startAmbient(); else stopAmbient();
+  if(a.ambient===true || kind==="timer" || kind==="breathe" || kind==="sigh" || kind==="hold") startAmbient(); else stopAmbient();
   if(kind==="breathe"){ runActvBreath(breatheCycles); }
+  else if(kind==="sigh"){ runActvSigh(breatheCycles); }
   else if(kind==="timer"){ runActvTimer(timerSecs); }
   else if(kind==="hold"){ runActvHold(hold); }
   else { // text or verse
@@ -2101,6 +2105,39 @@ function runActvBreath(cycles){
     i++; window._actvOrb=setTimeout(t, s[3]);
   })();
 }
+/* Physiological sigh: two inhales (a full nose breath, then a short sip on top),
+   then one long exhale through the mouth. The pacer Huberman describes — fastest
+   real-time way to pull the nervous system out of an anxiety spike. */
+function runActvSigh(cycles){
+  const orb=document.getElementById("actvOrb"), lbl=document.getElementById("actvOrbL"), prog=document.getElementById("actvProg");
+  if(!orb) return;
+  cycles=cycles||5;
+  const C=578; // ring circumference; 0 = full (lungs full), C = empty
+  // [label, sublabel, scale, ms, ringOffset, easing, spokenCue]
+  const seq=[
+    ["Breathe in","through your nose",1.16,3000,190,"cubic-bezier(.37,0,.63,1)","Breathe in"],
+    ["Sip in","a little more, on top",1.34,1100,0,"cubic-bezier(.45,0,.35,1)","and in again"],
+    ["Long exhale","slowly, through your mouth",0.80,7000,C,"cubic-bezier(.37,0,.63,1)","slowly out"],
+    ["Rest","",0.80,1500,C,"linear",""]
+  ];
+  // start small (fully exhaled) with the ring empty, no animation on the reset
+  orb.classList.remove("inhale","exhale");
+  orb.style.transitionDuration="0ms"; orb.style.transform="scale(0.80)";
+  if(prog){ prog.style.transitionDuration="0ms"; prog.style.strokeDashoffset=C; }
+  void orb.getBoundingClientRect(); // flush the reset before paced phases begin
+  const totalPhases=cycles*seq.length;
+  let i=0;
+  (function t(){
+    if(i>=totalPhases){ actvAdvance(); return; } // finished the sighs — move on
+    const s=seq[i%seq.length];
+    orb.style.transitionTimingFunction=s[5]; orb.style.transitionDuration=s[3]+"ms";
+    orb.style.transform="scale("+s[2]+")";
+    if(prog){ prog.style.transitionTimingFunction=s[5]; prog.style.transitionDuration=s[3]+"ms"; prog.style.strokeDashoffset=s[4]; }
+    if(lbl) lbl.innerHTML=`${s[0]}${s[1]?`<small>${s[1]}</small>`:""}`;
+    if(DATA.voiceOn && s[6]) actvSpeak(s[6]);
+    i++; window._actvOrb=setTimeout(t, s[3]);
+  })();
+}
 function runActvTimer(secs){
   const el=document.getElementById("actvTimer"), prog=document.getElementById("actvTimerProg");
   if(!el) return;
@@ -2164,7 +2201,7 @@ function doPrintJournal(){
    [breathe] (paced orb), [timer:seconds], [verse] (a scripture). */
 const ACTIVITIES = {
   recovery: [
-    {n:"Physiological Sigh", w:"The fastest way to calm your body.", m:2, s:["Sit or lie back. Let your shoulders drop.","Breathe in through your nose — then sneak in a second little sip of air on top.","Now a long, slow exhale through your mouth. Empty all the way.","[breathe:5]","Feel your body settle. You can stop whenever you're ready."]},
+    {n:"Physiological Sigh", w:"When anxiety spikes — the fastest way back.", m:2, s:["If your mind is racing or your chest feels tight, this calms your body faster than almost anything. Sit or lie back, and let your shoulders drop.","The rhythm is two breaths in, one long breath out: a full breath in through your nose, then a second short sip of air on top — then a long, slow exhale through your mouth.","Just follow the circle. I'll pace every breath for you.","[sigh:5]","Feel that settle? Even one or two rounds can pull you back. Do it again any time you need."]},
     {n:"Wind Down for Sleep", w:"A gentle glide into sleep.", m:6, ambient:true, s:["Get into bed, or somewhere you can rest. Dim the lights and let your eyes close — I'll guide you the whole way. Nothing to do now but listen and breathe.","Let the day be finished. Whatever is still undone can wait for morning. You're allowed to set it all down now.","We'll slow everything down with long, soft exhales. Just follow the circle.","[breathe:6]","Let your body grow heavy — your legs, your back, your shoulders, all sinking into the bed.","Now bring to mind one small good thing from today. Just hold it gently in your heart, and let yourself feel quietly thankful.","Soften your jaw, and the space between your eyebrows. Let your whole face grow still.","[verse]","Rest here in the quiet. Let each slow breath carry you a little deeper.","[timer:180|let sleep come when it's ready — there's nothing to do]","You are safe. You are held. You can let go now. Sleep well."]},
     {n:"Melt the Tension", w:"Release the tension you've been holding.", m:6, s:["Get comfortable, and if you'd like, close your eyes — I'll guide you with my voice the whole way. We'll gently tense each area, then rest in the release. Just listen and follow along.","[hold:7:15|Hands & arms — squeeze tight|Now let go. Feel them grow heavy and soft.|tense gently — never to the point of pain|notice the difference — that's tension leaving]","[hold:7:15|Shoulders & neck — lift them up toward your ears|Now drop them. Let them fall away.|tense gently — never to the point of pain|let them sink lower with each breath]","[hold:7:15|Face — scrunch it all up|Now release. Let it go smooth and soft.|tense gently — never to the point of pain|feel your whole face soften]","[hold:7:15|Belly & legs — tighten everything|Now release. Let it all go.|tense gently — never to the point of pain|let the heaviness spread through you]","Whole body loose now. Rest here a moment — you can feel the difference."]},
     {n:"Calm Breathing", w:"Shift into your body's rest mode.", m:3, s:["Get comfortable. Just follow the circle.","[breathe:6]","Well done. Carry this calm with you."]},

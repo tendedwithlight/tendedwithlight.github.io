@@ -672,6 +672,12 @@
     background:rgba(59,50,64,0.55); color:#fff; cursor:pointer; font-size:13px; line-height:1; }
   .moment-cap { margin-top:6px; font-size:13px; padding:7px 9px; }
   .moment-date { font-size:11.5px; color:var(--ink-soft); margin-top:3px; padding-left:2px; }
+  .moment-file { position:relative; width:100%; aspect-ratio:1/1; border-radius:12px; overflow:hidden;
+    background:var(--cream-2); box-shadow:var(--shadow-soft); display:flex; flex-direction:column;
+    align-items:center; justify-content:center; gap:8px; padding:10px; text-align:center; }
+  .moment-file .file-ic { opacity:.85; }
+  .moment-file .file-nm { font-size:11.5px; color:var(--ink-soft); line-height:1.3; max-width:100%;
+    overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; word-break:break-word; }
   .wtr-add { display:flex; gap:8px; margin-top:6px; align-items:flex-start; }
   .wtr-field { position:relative; flex:1; min-width:0; }
   .wtr-field input { width:100%; }
@@ -1404,7 +1410,7 @@ if (DATA.voiceOn === undefined) DATA.voiceOn = true;    // read-aloud voice ON b
 DATA.voiceName = DATA.voiceName || "";   // her chosen narrator voice (voiceURI)
 DATA.drafts    = DATA.drafts    || {};   // in-progress, unsaved text per field id — so nothing typed is ever lost
 DATA.books     = DATA.books     || [];   // her book reviews: [{id,date,finished,title,author,rating,cover,coverType,gist,review,spoilers,quote,recommend}]
-DATA.books.forEach(b=>{ if(!b.finished) b.finished = b.date || todayKey(); if(!b.characters) b.characters=[]; }); // date-read + character list for older entries
+DATA.books.forEach(b=>{ if(!b.finished) b.finished = b.date || todayKey(); if(!b.characters) b.characters=[]; if(!b.gallery) b.gallery=[]; }); // date-read + character list + photos/keepsakes gallery ([{id,date,caption,name,type}] — media in IndexedDB) for older entries
 DATA.readingList = DATA.readingList || []; // books she wants to read someday: [{id,title,added}]
 // Her children — notes/impressions + a moments gallery per child. Photos live in IndexedDB; notes/captions sync.
 DATA.children = DATA.children || [
@@ -2799,6 +2805,23 @@ function view_bookEdit(b){
       </div>
     </div>
 
+    <div class="card tint">
+      <h3>Photos &amp; keepsakes</h3>
+      <p class="sub">Anything you'd love to keep with this book — a favorite page, a line you photographed, where you read it, a note or file. Add as many as you like.</p>
+      <label class="btn tiny" for="bkGalleryInput" style="cursor:pointer">${icon('frame',15)} Add photos / files</label>
+      <input type="file" id="bkGalleryInput" accept="image/*,application/pdf,.pdf,.doc,.docx,.txt,.rtf,.pages,.ppt,.pptx,.xls,.xlsx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation" multiple style="display:none" />
+      ${(b.gallery&&b.gallery.length)?`<div class="moments-grid">${b.gallery.map(m=>{
+        const isImg=(m.type||"").indexOf("image/")===0;
+        return `<div class="moment">
+          ${isImg
+            ? `<div class="moment-img"><img data-photo-id="${esc(m.id)}" alt="${esc(m.caption||'a keepsake')}" /><button class="moment-x" data-bgdel="${esc(m.id)}" aria-label="remove">✕</button></div>`
+            : `<div class="moment-file"><button class="moment-x" data-bgdel="${esc(m.id)}" aria-label="remove">✕</button><div class="file-ic">${icon('book',22,'var(--ink-soft)')}</div><div class="file-nm">${esc(m.name||'file')}</div><button class="btn tiny ghost" data-bgopen="${esc(m.id)}">Open</button></div>`}
+          <input type="text" class="moment-cap" data-bgcap="${esc(m.id)}" placeholder="Add a note…" value="${esc(m.caption||'')}" />
+          <div class="moment-date">${esc(fmt(m.date))}</div>
+        </div>`; }).join("")}</div>`
+        : `<p class="empty" style="margin-top:10px">Nothing here yet — add a photo or file whenever you like.</p>`}
+    </div>
+
     <div class="spoiler-zone">
       <button class="spoiler-head" id="bkSpoilToggle" aria-expanded="${showSpoil?'true':'false'}">
         ${icon('eye',17)} Spoiler zone
@@ -2895,6 +2918,7 @@ function closeBook(){
 }
 function deleteBook(){
   const b = currentBook(); if(!b) return;
+  (b.gallery||[]).forEach(m=>{ if(m.id) idbDel(m.id); }); // clean up its photos/files from storage
   DATA.books = DATA.books.filter(x=>x.id!==b.id);
   saveData(DATA); _bookOpen = null; go("books"); celebrate("");
 }
@@ -4887,6 +4911,24 @@ function wire(){
         if(lock) lock.textContent = nowHidden ? "🔒 Show spoilers" : "Hide spoilers";
         stog.setAttribute("aria-expanded", nowHidden?"false":"true"); buzz();
       });
+      // Photos & keepsakes gallery — images compressed, other files stored whole; all in IndexedDB
+      const gin=document.getElementById("bkGalleryInput");
+      if(gin) gin.addEventListener("change", ()=>{ const files=[...(gin.files||[])]; if(!files.length) return;
+        b.gallery=b.gallery||[]; let pending=files.length; let tooBig=false;
+        const finish=()=>{ pending--; if(pending<=0){ saveData(DATA); buzz(); celebrate(tooBig?"Some files were over 30 MB and skipped — the rest are kept ✦":"Kept ✦"); render(); } };
+        files.forEach(f=>{
+          if(f.size > 30*1024*1024){ tooBig=true; finish(); return; }
+          const isImg = f.type && f.type.indexOf("image/")===0;
+          const store=(dataURL)=>{ const id=uid(); idbPut(id,dataURL)
+            .then(()=>{ b.gallery.push({id, date:todayKey(), caption:"", name:f.name, type:f.type||""}); finish(); })
+            .catch(()=>{ tooBig=true; finish(); }); };
+          if(isImg) readAndCompress(f, store, 1600); else readFileAsDataURL(f, store);
+        });
+        gin.value="";
+      });
+      document.querySelectorAll("[data-bgopen]").forEach(btn=>btn.addEventListener("click", ()=>{ const m=(b.gallery||[]).find(x=>x.id===btn.dataset.bgopen); if(m) openLessonFile(m.id, m.name); }));
+      document.querySelectorAll("[data-bgcap]").forEach(inp=>inp.addEventListener("input", ()=>{ const m=(b.gallery||[]).find(x=>x.id===inp.dataset.bgcap); if(m){ m.caption=inp.value; saveData(DATA); } }));
+      document.querySelectorAll("[data-bgdel]").forEach(btn=>btn.addEventListener("click", ()=>{ if(confirm("Remove this from the book? Your original stays safe in your phone.")){ const id=btn.dataset.bgdel; b.gallery=(b.gallery||[]).filter(x=>x.id!==id); saveData(DATA); idbDel(id); render(); } }));
       const sv=document.getElementById("bkSave"); if(sv) sv.addEventListener("click", ()=>{ saveData(DATA); bookFlashSaved(); buzz(); });
       const dl=document.getElementById("bkDelete"); if(dl) dl.addEventListener("click", ()=>{
         if(confirm("Remove this book from your shelf? This can't be undone.")) deleteBook();

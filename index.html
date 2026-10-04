@@ -1345,6 +1345,17 @@ function updateCloudUI(){
 }
 function openCloudPanel(){
   const o=document.getElementById("cloudOverlay"); if(!o) return;
+  const backupBlock = `
+      <div style="margin-top:18px;border-top:1px solid var(--line);padding-top:16px;text-align:left">
+        <h3 style="margin:0 0 4px;font-size:16px">Getting a new phone?</h3>
+        <p class="sub" style="margin:0 0 12px">Save one file with <b>everything</b> — your words and every photo &amp; attachment. Keep it safe (email it to yourself, or save to Files). On the new phone, open Lumen and tap <b>Restore</b>.</p>
+        <div class="row" style="gap:10px;flex-wrap:wrap;justify-content:center">
+          <button class="btn tiny" id="lumenBackupBtn">Back up everything</button>
+          <label class="btn tiny ghost" for="lumenRestoreInput" style="cursor:pointer">Restore from a backup</label>
+          <input type="file" id="lumenRestoreInput" accept="application/json,.json" style="display:none" />
+        </div>
+        <p class="sub" id="lumenBackupMsg" style="margin-top:10px;display:none"></p>
+      </div>`;
   const inner = _sbUser ? `<div class="cloud-card">
       <button class="cloud-close" onclick="closeCloudPanel()" aria-label="Close">✕</button>
       <div style="color:#7E9B7A;margin-bottom:8px">${icon("cloud",30,"#7E9B7A")}</div>
@@ -1352,6 +1363,7 @@ function openCloudPanel(){
       <p class="sub">Everything you do saves safely and follows you across your phone and computer — automatically, privately, just for you.</p>
       <p class="sub" style="margin-top:10px"><b>${esc(_sbUser.email||"")}</b></p>
       <div class="row" style="justify-content:center;margin-top:16px"><button class="btn ghost tiny" id="cloudOutBtn">Sign out on this device</button></div>
+      ${backupBlock}
     </div>` : `<div class="cloud-card">
       <button class="cloud-close" onclick="closeCloudPanel()" aria-label="Close">✕</button>
       <div style="color:var(--accent);margin-bottom:8px">${icon("cloud",30,"currentColor")}</div>
@@ -1360,6 +1372,7 @@ function openCloudPanel(){
       <input type="email" id="cloudEmail" inputmode="email" autocomplete="email" placeholder="you@email.com" />
       <div class="row" style="justify-content:center;margin-top:14px"><button class="btn tiny" id="cloudInBtn">Send my sign-in link</button></div>
       <p class="sub" id="cloudMsg" style="margin-top:12px;display:none"></p>
+      ${backupBlock}
     </div>`;
   o.innerHTML=inner; o.classList.add("show"); document.body.style.overflow="hidden";
   const inBtn=document.getElementById("cloudInBtn");
@@ -1374,8 +1387,61 @@ function openCloudPanel(){
   });
   const outBtn=document.getElementById("cloudOutBtn");
   if(outBtn) outBtn.addEventListener("click", ()=>{ cloudSignOut(); closeCloudPanel(); });
+  const bBtn=document.getElementById("lumenBackupBtn");
+  if(bBtn) bBtn.addEventListener("click", backupAll);
+  const rIn=document.getElementById("lumenRestoreInput");
+  if(rIn) rIn.addEventListener("change", ()=>{ const f=rIn.files&&rIn.files[0]; if(f) restoreFromFile(f); rIn.value=""; });
 }
 function closeCloudPanel(){ const o=document.getElementById("cloudOverlay"); if(o){ o.classList.remove("show"); o.innerHTML=""; } document.body.style.overflow=""; }
+/* ============================================================
+   Backup & Restore — one file that holds EVERYTHING: her words
+   (DATA) plus every photo & attachment (IndexedDB media). This is
+   the safe way to move to a new phone, since the cloud only carries
+   text + inline images, never the photo gallery / moments / files.
+   ============================================================ */
+function _backupMsg(t){ const m=document.getElementById("lumenBackupMsg"); if(m){ m.style.display="block"; m.textContent=t; } try{ celebrate(t); }catch(_){} }
+async function backupAll(){
+  try{
+    _backupMsg("Gathering everything…");
+    const media = await idbAll();
+    const payload = { _lumenBackup:true, v:1, exportedAt:new Date().toISOString(), data:DATA, media:media };
+    const json = JSON.stringify(payload);
+    const d=new Date(); const p=n=>String(n).padStart(2,"0");
+    const name = "lumen-backup-"+d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+".json";
+    const blob = new Blob([json], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a=document.createElement("a"); a.href=url; a.download=name; a.rel="noopener";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>{ try{ URL.revokeObjectURL(url); }catch(_){} }, 20000);
+    const mb=(json.length/1048576).toFixed(1);
+    _backupMsg("Backup saved ✦ ("+mb+" MB) — keep this file safe (email it to yourself, or save to Files). It has everything.");
+  }catch(e){ _backupMsg("Couldn't make the backup just now — please try again."); }
+}
+function restoreFromFile(file){
+  const r=new FileReader();
+  r.onload=()=>{
+    let payload=null;
+    try{ payload=JSON.parse(r.result); }catch(e){}
+    if(!payload || !payload._lumenBackup || !payload.data){ _backupMsg("That file didn't look like a Lumen backup — pick the lumen-backup…json file."); return; }
+    const doRestore=async ()=>{
+      try{
+        _backupMsg("Restoring everything…");
+        const media=payload.media||{};
+        const keys=Object.keys(media);
+        for(let i=0;i<keys.length;i++){ try{ await idbPut(keys[i], media[keys[i]]); }catch(_){} }
+        const fresh=payload.data; fresh._updatedAt=Date.now(); // newer than cloud so sign-in won't overwrite it
+        DATA = fresh; // reassign in memory too, so autosave/boot can't revert to the old data
+        localStorage.setItem(KEY, JSON.stringify(fresh));
+        _backupMsg("Everything's back ✦ reloading…");
+        setTimeout(()=>{ try{ location.reload(); }catch(_){} }, 1000);
+      }catch(e){ _backupMsg("Something went wrong restoring — your current data is untouched."); }
+    };
+    const hasStuff = DATA && ( (DATA.pages&&DATA.pages.length) || (DATA.books&&DATA.books.length) || (DATA.journal&&DATA.journal.length) || (DATA.children&&DATA.children.some(c=>(c.notes&&c.notes.length)||(c.moments&&c.moments.length))) );
+    if(hasStuff){ if(confirm("This replaces what's in the app on THIS phone with your backup. On a brand-new phone that's exactly right. Continue?")) doRestore(); }
+    else doRestore();
+  };
+  r.readAsText(file);
+}
 DATA.checkins  = DATA.checkins  || {};   // { 'YYYY-MM-DD': {body, heart} }
 DATA.oneThing  = DATA.oneThing  || {};   // { date, text }
 DATA.journal   = DATA.journal   || [];   // [{id, date, prompt, text}]
@@ -3043,6 +3109,8 @@ function _idb(){ return new Promise((res,rej)=>{ try{ const r=indexedDB.open(IDB
 async function idbPut(k,v){ const db=await _idb(); return new Promise((res,rej)=>{ const t=db.transaction(IDB_STORE,"readwrite"); t.objectStore(IDB_STORE).put(v,k); t.oncomplete=()=>res(true); t.onerror=()=>rej(t.error); }); }
 async function idbGet(k){ const db=await _idb(); return new Promise((res,rej)=>{ const t=db.transaction(IDB_STORE,"readonly"); const rq=t.objectStore(IDB_STORE).get(k); rq.onsuccess=()=>res(rq.result||null); rq.onerror=()=>rej(rq.error); }); }
 async function idbDel(k){ try{ const db=await _idb(); return new Promise((res)=>{ const t=db.transaction(IDB_STORE,"readwrite"); t.objectStore(IDB_STORE).delete(k); t.oncomplete=()=>res(true); t.onerror=()=>res(false); }); }catch(e){ return false; } }
+async function idbAll(){ try{ const db=await _idb(); return new Promise((res)=>{ const out={}; const t=db.transaction(IDB_STORE,"readonly"); const cur=t.objectStore(IDB_STORE).openCursor();
+  cur.onsuccess=e=>{ const c=e.target.result; if(c){ out[c.key]=c.value; c.continue(); } else res(out); }; cur.onerror=()=>res(out); }); }catch(e){ return {}; } }
 function hydratePhotos(){
   document.querySelectorAll("img[data-photo-id]:not([data-hydrated])").forEach(img=>{
     img.setAttribute("data-hydrated","1");
